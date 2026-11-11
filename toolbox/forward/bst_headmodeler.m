@@ -628,7 +628,7 @@ end
 
 %% ===== COMPUTE: NIRSTORM HEADMODELS =====
 if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
-    if ~(strcmp(OPTIONS.HeadModelType, 'surface') || strcmp(OPTIONS.HeadModelType, 'volume'))
+    if ~strcmp(OPTIONS.HeadModelType, 'surface') && ~strcmp(OPTIONS.HeadModelType, 'volume')
         errMessage = sprintf('%s headmodel is not supported for NIRS', OPTIONS.HeadModelType);
         OPTIONS = [];
         return;
