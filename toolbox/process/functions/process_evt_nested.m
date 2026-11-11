@@ -103,7 +103,6 @@ function OutputFiles = Run(sProcess, sInput)
     % Get options
     partial_nesting = sProcess.options.partial_nesting.Value;
     method = sProcess.options.method.Value;
-    minimum_duration = sProcess.options.minimum_duration.Value{1};
 
     % ===== GET FILE DESCRIPTOR =====
     isRaw = strcmpi(sInput.FileType, 'raw');
@@ -255,7 +254,7 @@ function newEvents = CreateNewEvents(sEventsInner,  sEventsOuter,  partial_nesti
     end
 
     for iEvents = 1:length(sEventsOuter)
-        newEvents(iEvents).label = sprintf('%s%s%s%s', sEventsInner.label, separator, sEventsOuter(iEvents).label, suffix);
+        newEvents(iEvents).label = sprintf('%s%s%s%s', sEventsOuter.label, separator, sEventsInner(iEvents).label, suffix);
         newEvents(iEvents).color = sEventsOuter(iEvents).color;
     end
     
