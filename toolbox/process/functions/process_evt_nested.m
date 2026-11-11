@@ -58,13 +58,13 @@ function sProcess = GetDescription()
                                        '<FONT color=#7F7F7F>(Separate multiple events using comma)</FONT><BR>'];
     sProcess.options.label2.Type    = 'label';
     % Nested events
-    sProcess.options.inner_events.Comment = 'Events A';
-    sProcess.options.inner_events.Type    = 'text';
-    sProcess.options.inner_events.Value   = '';
-    % Nesting events
-    sProcess.options.outer_events.Comment = 'Events B';
+    sProcess.options.outer_events.Comment = 'Events A';
     sProcess.options.outer_events.Type    = 'text';
     sProcess.options.outer_events.Value   = '';
+    % Nesting events
+    sProcess.options.inner_events.Comment = 'Events B';
+    sProcess.options.inner_events.Type    = 'text';
+    sProcess.options.inner_events.Value   = '';
 
 
     sProcess.options.label3.Comment = ['<B>Partial nesting</B><BR>', ...
@@ -95,7 +95,7 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInput)
     % Return all the input files
-    OutputFiles = {};   
+    OutputFiles     = {sInput.FileName};
 
     % ===== GET OPTIONS =====
     % Combination string
@@ -143,14 +143,16 @@ function OutputFiles = Run(sProcess, sInput)
     missing_events = union(missing_events_inner, missing_events_outer);
     if ~isempty(missing_events)
         bst_report('Warning', sProcess, sInput, sprintf('The following events were not found in the file: %s.', strjoin(missing_events, ', ')));
-    elseif isempty(sEventsInner) ||  isempty(sEventsOuter)
+    end
+    if isempty(sEventsInner) ||  isempty(sEventsOuter)
         bst_report('Warning', sProcess, sInput, 'This file does not contain any event. skipping');
+        OutputFiles = sInput;
         return;
     end
     
     isExtended = AreEventExtended(sEventsOuter);
     if ~all(isExtended)
-        bst_report('Error', sProcess, sInput, sprintf('All classifying events must be extended events. The following events are simple events %s', strjoin({sEventsOuter(~isExtended).label}, ', '  )));
+        bst_report('Error', sProcess, sInput, sprintf('All nesting events must be extended events. The following events are simple events %s', strjoin({sEventsOuter(~isExtended).label}, ', '  )));
         return;
     end
     
@@ -175,15 +177,11 @@ function OutputFiles = Run(sProcess, sInput)
     % ===== SAVE RESULT =====
     % Report results
     if isRaw
-        DataMat.F = sFile;
+        DataMat.F.events = sFile.events;
     else
         DataMat.Events = sFile.events;
     end
     bst_save(file_fullpath(sInput.FileName), DataMat, 'v6', 1);
-
-
-    % Return all the input files
-    OutputFiles{end+1} = sInput.FileName;
 end
 
 function [events, missing_events] = GetEvents(sEvents, eventNames)
@@ -212,10 +210,16 @@ function mask = Event2Mask(Time, sEvents)
 % create a binary mask of the events. 
 
     mask = false(length(sEvents), length(Time));
+    isExtended = AreEventExtended(sEvents);
+
     for iEvt = 1:length(sEvents)
-    
         for iTime = 1:size(sEvents(iEvt).times, 2)
-            idx_time = panel_time('GetTimeIndices', Time, sEvents(iEvt).times(:, iTime));
+            if isExtended(iEvt)
+                idx_time = panel_time('GetTimeIndices', Time, sEvents(iEvt).times(:, iTime));
+            else
+                [~, idx_time] = min(abs(Time - sEvents(iEvt).times(1, iTime)));
+            end
+
             mask(iEvt, idx_time) = 1;
         end
     end
@@ -255,15 +259,8 @@ function newEvents = CreateNewEvents(sEventsInner,  sEventsOuter,  partial_nesti
             error('Unknown opperation %', method)
     end
     
-    if AreEventExtended(sEventsInner)
-        switch partial_nesting
-            case 'split'
-                suffix = '_T';
-            case 'reject'
-                suffix = '_F';
-            otherwise
-                error('Unknown partial nesting %', partial_nesting)
-        end
+    if AreEventExtended(sEventsInner) && strcmpi(partial_nesting, 'split')
+        suffix = '_partial';
     else
         suffix = '';
     end
@@ -309,23 +306,18 @@ function newEvents = ClassifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
     % (extended event = true/ false, operation = intersection / difference)
 
     isExtended = AreEventExtended(sEventsInner);
-    if ~isExtended
-        if strcmp(method, 'intersection') 
-            for iTime = 1:size(sEventsInner.times, 2)
-                [~, idx_time] = min(abs(Time - sEventsInner.times(1, iTime))); 
-                
-                % Find which classifying event is occurring at that time
-                event_mask = mask(:, idx_time);
-                [~, iEvent] = max(event_mask, [], 1);
-                iEvent = unique(iEvent);
-    
-                % Assign time
-                newEvents(iEvent).times(end+1) = sEventsInner.times(iTime);
-                newEvents(iEvent).epochs(end+1) = 1;
-            end
+    if strcmp(method, 'intersection')  && ~isExtended
+        for iTime = 1:size(sEventsInner.times, 2)
+            [~, idx_time] = min(abs(Time - sEventsInner.times(1, iTime))); 
+            
+            % Find which nesting event is occurring at that time
+            event_mask = mask(:, idx_time);
+            [~, iEvent] = max(event_mask, [], 1);
+            iEvent = unique(iEvent);
 
-        else
-            error('%s is not supported for simple events', method);
+            % Assign time
+            newEvents(iEvent).times(end+1) = sEventsInner.times(iTime);
+            newEvents(iEvent).epochs(end+1) = 1;
         end
     else 
         % Generate binary mask for the event, then compute intersection
