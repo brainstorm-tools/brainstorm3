@@ -9,7 +9,8 @@ function iChannelFinal = good_channel(Channel, ChannelFlag, channelTypes)
 %    - ChannelFlag : vector of -1 (bad), 0(indifferent), and 1(good) data flags of length 
 %                    the number of channels in the Channel structure.
 %                    If left empty, assumes all channels are GOOD
-%    - channelTypes: Types of channel that is looked for ('EEG', 'MEG', ...)
+%    - channelTypes: Types of channel that is looked for ('EEG', 'MEG', ...).
+%                    If channelTypes is empty returns all channels
 %
 % OUTPUT:
 %    - iChannel : the index to the good channels for desired sensor type 
@@ -36,8 +37,8 @@ function iChannelFinal = good_channel(Channel, ChannelFlag, channelTypes)
 %          Francois Tadel, 2008-2010
 
 iChannelFinal = [];
-if isempty(channelTypes)
-    return;
+if nargin < 3 || isempty(channelTypes)
+    channelTypes = unique({Channel.Type});
 elseif ~iscell(channelTypes)
     channelTypes = {channelTypes};
 end
