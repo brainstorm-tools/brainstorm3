@@ -167,6 +167,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Combine stim/response', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_combine'));
         gui_component('MenuItem', jMenu, [], 'Combine nested events', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_nested'));
+        gui_component('MenuItem', jMenu, [], 'Filter extended events by duration', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_filter_duration'));        
         gui_component('MenuItem', jMenu, [], 'Detect multiple responses', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_multiresp'));
         gui_component('MenuItem', jMenu, [], 'Group by name', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_groupname'));
         gui_component('MenuItem', jMenu, [], 'Group by time', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_grouptime'));
