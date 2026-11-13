@@ -231,8 +231,8 @@ end
 
 function newEvents = CreateNewEvents(sNestedEvent, sNestingEvents, partial_nesting, method)
 % Create (empty) new event to store results from the operation between nested and nesting events
-    newEvents = repmat(db_template('event'), 1, 1 + length(sNestingEvents));
-
+    newEvents = repmat(db_template('event'), 1, length(sNestingEvents));
+    % Operation
     switch method
         case 'intersection'
             separator = '^';
@@ -241,19 +241,17 @@ function newEvents = CreateNewEvents(sNestedEvent, sNestingEvents, partial_nesti
         otherwise
             error('Unknown opperation %s', method)
     end
-    
+    % Status of partially nested
     if IsExtendedEvent(sNestedEvent) && strcmpi(partial_nesting, 'split')
         suffix = '_partial';
     else
         suffix = '';
     end
-
+    % New events
     for iNesting = 1:length(sNestingEvents)
         newEvents(iNesting).label = sprintf('%s%s%s%s', sNestedEvent.label, separator, sNestingEvents(iNesting).label, suffix);
         newEvents(iNesting).color = MixColors(sNestedEvent.color, sNestingEvents(iNesting).color);
     end
-    newEvents(end).label = sprintf('%s%s%s%s', sNestedEvent.label, separator, 'unknown', suffix);
-    newEvents(end).color = [0, 0, 0];
 end
 
 
@@ -280,10 +278,7 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
 % inx-out_F                                            |---------|
 
     newEvents = CreateNewEvents(sNestedEvent, sNestingEvents, partial_nesting, method);
-    % Add one row to the mask for the other case 
-    % Ensure that all time point belongs to one category
-    isClasified = max(mask, [], 1);
-    mask = [mask ; 1 - isClasified];
+
     % Invert mask for difference
     if strcmp(method, 'difference')
         mask = ~mask;
@@ -314,7 +309,7 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
             for iOccurance = 1:size(sNestedEvent.times, 2)
                 idx_time = panel_time('GetTimeIndices', Time, sNestedEvent.times(:, iOccurance));
                 % Keep only full overlap
-                rm_event_mask = ~all(intersection(:, idx_time), 2)
+                rm_event_mask = ~all(intersection(:, idx_time), 2);
                 intersection(rm_event_mask, idx_time) = 0;
             end
         end
@@ -328,9 +323,6 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
             newEvents(iEvent).epochs = [newEvents(iEvent).epochs, ones(size(new_time, 2), 1)];
         end
     end
-
-    % Remove unclassified events
-    newEvents = newEvents(1:length(sNestingEvents));
 end
 
 function isExtended = IsExtendedEvent(sEvents)
