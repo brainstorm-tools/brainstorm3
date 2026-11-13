@@ -250,7 +250,7 @@ function newEvents = CreateNewEvents(sNestedEvent, sNestingEvents, partial_nesti
     % New events
     for iNesting = 1:length(sNestingEvents)
         newEvents(iNesting).label = sprintf('%s%s%s%s', sNestedEvent.label, separator, sNestingEvents(iNesting).label, suffix);
-        newEvents(iNesting).color = MixColors(sNestedEvent.color, sNestingEvents(iNesting).color);
+        newEvents(iNesting).color = panel_record('MixColors', sNestedEvent.color, sNestingEvents(iNesting).color, 0.3);
     end
 end
 
@@ -332,33 +332,4 @@ function isExtended = IsExtendedEvent(sEvents)
     for iEvent = 1:length(sEvents)
         isExtended(iEvent) = size(sEvents(iEvent).times, 1) == 2;
     end
-end
-
-function mixed = MixColors(color1, color2, weight)
-    % Blend two RGB colours ([0-1] range) in linear light.
-    % weight = contribution of color2 (default 0.5).
-    if nargin < 3
-        weight = 0.5;
-    end
-    % Fallbacks if a colour is missing
-    if isempty(color1), mixed = color2; return; end
-    if isempty(color2), mixed = color1; return; end
-
-    lin1 = SrgbToLinear(color1);
-    lin2 = SrgbToLinear(color2);
-    mixed = LinearToSrgb((1 - weight) * lin1 + weight * lin2);
-end
-
-function lin = SrgbToLinear(c)
-    lin = c;
-    mask = c <= 0.04045;
-    lin(mask)  = c(mask) / 12.92;
-    lin(~mask) = ((c(~mask) + 0.055) / 1.055) .^ 2.4;
-end
-
-function c = LinearToSrgb(lin)
-    c = lin;
-    mask = lin <= 0.0031308;
-    c(mask)  = lin(mask) * 12.92;
-    c(~mask) = 1.055 * lin(~mask) .^ (1/2.4) - 0.055;
 end
