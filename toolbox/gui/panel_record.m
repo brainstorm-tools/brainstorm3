@@ -166,6 +166,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Set channel info', IconLoader.ICON_CHANNEL, [], @(h,ev)CallProcessOnRaw('process_evt_channelinfo'));        
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Combine stim/response', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_combine'));
+        gui_component('MenuItem', jMenu, [], 'Combine nested events', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_nested'));
+        gui_component('MenuItem', jMenu, [], 'Filter extended events by duration', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_filter_duration'));        
         gui_component('MenuItem', jMenu, [], 'Detect multiple responses', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_multiresp'));
         gui_component('MenuItem', jMenu, [], 'Group by name', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_groupname'));
         gui_component('MenuItem', jMenu, [], 'Group by time', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_grouptime'));
@@ -3266,4 +3268,36 @@ function JumpToVideoTime(hFig, oldVideoTime, newVideoTime)
     panel_time('SetCurrentTime', TimeVector(iTime));
     % Close progress bar
     bst_progress('stop');
+end
+
+
+%% ===== MIX COLORS, LINEAR LIGHT =====
+function mixed = MixColors(color1, color2, weight)
+    % Blend two RGB colours ([0-1] range) in linear light.
+    % weight = contribution of color2 (default 0.5).
+    if nargin < 3
+        weight = 0.5;
+    end
+    % Fallbacks if a colour is missing
+    if isempty(color1), mixed = color2; return; end
+    if isempty(color2), mixed = color1; return; end
+    % RGB --> Linear --> Mix --> RGB
+    % https://en.wikipedia.org/wiki/SRGB#Transfer_function_(%22gamma%22)
+    lin1 = SrgbToLinear(color1);
+    lin2 = SrgbToLinear(color2);
+    mixed = LinearToSrgb((1 - weight) * lin1 + weight * lin2);
+end
+
+function lin = SrgbToLinear(c)
+    lin = c;
+    mask = c <= 0.04045;
+    lin(mask)  = c(mask) / 12.92;
+    lin(~mask) = ((c(~mask) + 0.055) / 1.055) .^ 2.4;
+end
+
+function c = LinearToSrgb(lin)
+    c = lin;
+    mask = lin <= 0.0031308;
+    c(mask)  = lin(mask) * 12.92;
+    c(~mask) = 1.055 * lin(~mask) .^ (1/2.4) - 0.055;
 end
