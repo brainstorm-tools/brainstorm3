@@ -280,7 +280,6 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
 % inx-out_F                                            |---------|
 
     newEvents = CreateNewEvents(sNestedEvent, sNestingEvents, partial_nesting, method);
-    
     % Add one row to the mask for the other case 
     % Ensure that all time point belongs to one category
     isClasified = max(mask, [], 1);
@@ -293,15 +292,14 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
     if strcmp(method, 'intersection')  && ~isExtended
         for iTime = 1:size(sNestedEvent.times, 2)
             [~, idx_time] = min(abs(Time - sNestedEvent.times(1, iTime)));
-            
             % Find which nesting event is occurring at that time
             event_mask = mask(:, idx_time);
-            [~, iEvent] = max(event_mask, [], 1);
-            iEvent = unique(iEvent);
-
-            % Assign time
-            newEvents(iEvent).times(end+1) = sNestedEvent.times(iTime);
-            newEvents(iEvent).epochs(end+1) = 1;
+            iNewEvent = find(event_mask);
+            % Assign occurrence to new event
+            for ix = 1 : length(iNewEvent)
+                newEvents(iNewEvent(ix)).times(end+1) = sNestedEvent.times(iTime);
+                newEvents(iNewEvent(ix)).epochs(end+1) = 1;
+            end
         end
     else 
         % Generate binary mask for the nested event, then compute intersection
