@@ -284,21 +284,22 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
     % Ensure that all time point belongs to one category
     isClasified = max(mask, [], 1);
     mask = [mask ; 1 - isClasified];
-    
+    % Invert mask for difference
+    if strcmp(method, 'difference')
+        mask = ~mask;
+    end
+
     % Simple nested event: Intersection and Difference
     if ~IsExtendedEvent(sNestedEvent)
-        if strcmp(method, 'difference')
-            mask = ~mask;
-        end
         for iTime = 1:size(sNestedEvent.times, 2)
             [~, idx_time] = min(abs(Time - sNestedEvent.times(1, iTime)));
             % Find which nesting event is occurring at that time
             event_mask = mask(:, idx_time);
-            iNewEvent = find(event_mask);
+            NewEvent = find(event_mask);
             % Assign occurrence to new event
-            for ix = 1 : length(iNewEvent)
-                newEvents(iNewEvent(ix)).times(end+1) = sNestedEvent.times(iTime);
-                newEvents(iNewEvent(ix)).epochs(end+1) = 1;
+            for ix = 1 : length(NewEvent)
+                newEvents(NewEvent(ix)).times(end+1) = sNestedEvent.times(iTime);
+                newEvents(NewEvent(ix)).epochs(end+1) = 1;
             end
         end
 
@@ -306,41 +307,25 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
     else
         % Generate binary mask for the nested event, then compute intersection
         nested_mask = Event2Mask(Time, sNestedEvent);
-
-        % To compute the difference, we jut invert the mask
-        if strcmp(method, 'difference')
-            nested_mask = ~nested_mask;
-        end
-        
         % Compute intersection
         intersection = mask .* repmat(nested_mask, size(mask, 1), 1);
-
         % Remove nested event overlapping multiple nesting events
         if strcmp(partial_nesting, 'ignore')
             for iOccurance = 1:size(sNestedEvent.times, 2)
                 idx_time = panel_time('GetTimeIndices', Time, sNestedEvent.times(:, iOccurance));
-
-                event_mask = mask(:, idx_time);
-                [~, iEvent] = max(event_mask, [], 1);
-                iEvent = unique(iEvent);
-            
-                isOverlapping = length(iEvent) > 1;
-                if isOverlapping
-                    intersection(:, idx_time) = 0;
-                end
+                % Keep only full overlap
+                rm_event_mask = ~all(intersection(:, idx_time), 2)
+                intersection(rm_event_mask, idx_time) = 0;
             end
         end
-
         % Generate events
         for iEvent = 1:length(newEvents)
             new_time = Mask2Time(Time, intersection(iEvent, :));
-
             if isempty(new_time)
                 continue;
             end
-
             newEvents(iEvent).times  = [newEvents(iEvent).times, new_time];
-            newEvents(iEvent).epochs = [newEvents(iEvent).epochs , ones(size(new_time, 2), 1)];
+            newEvents(iEvent).epochs = [newEvents(iEvent).epochs, ones(size(new_time, 2), 1)];
         end
     end
 
