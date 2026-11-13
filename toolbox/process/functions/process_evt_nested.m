@@ -285,11 +285,11 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
     isClasified = max(mask, [], 1);
     mask = [mask ; 1 - isClasified];
     
-    % Compute each of the following 4 case separately 
-    % (extended event = true/ false, operation = intersection / difference)
-
-    isExtended = IsExtendedEvent(sNestedEvent);
-    if strcmp(method, 'intersection')  && ~isExtended
+    % Simple nested event: Intersection and Difference
+    if ~IsExtendedEvent(sNestedEvent)
+        if strcmp(method, 'difference')
+            mask = ~mask;
+        end
         for iTime = 1:size(sNestedEvent.times, 2)
             [~, idx_time] = min(abs(Time - sNestedEvent.times(1, iTime)));
             % Find which nesting event is occurring at that time
@@ -301,7 +301,9 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
                 newEvents(iNewEvent(ix)).epochs(end+1) = 1;
             end
         end
-    else 
+
+    % Extended nested event: Intersection and Difference
+    else
         % Generate binary mask for the nested event, then compute intersection
         nested_mask = Event2Mask(Time, sNestedEvent);
 
