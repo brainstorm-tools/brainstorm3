@@ -1,5 +1,5 @@
 function varargout = process_evt_nested( varargin )
-% process_evt_nested: Combine nested events based on the outer events.
+% process_evt_nested: Combine nested events based on the nesting events.
 %
 % USAGE:  OutputFiles = process_evt_nested('Run', sProcess, sInputs)
 
@@ -22,6 +22,7 @@ function varargout = process_evt_nested( varargin )
 % =============================================================================@
 %
 % Authors: Edouard Delaire, 2026
+%          Raymundo Cassani, 2026
 
 eval(macro_method);
 end
@@ -42,14 +43,15 @@ function sProcess = GetDescription()
     sProcess.nMinFiles   = 1;
 
     % Event operation
-    sProcess.options.label1.Comment = ['<HTML><B>Operation</B> between nested events <B>A</B>, and extended nesting events <B>B</B>.' ...
+    sProcess.options.label1.Comment = ['<HTML><B>Operation</B><BR>', ...
+                                       '<FONT color=#7F7F7F>Operation between nested events <B>A</B>, and extended nesting events <B>B</B></FONT>' ...
                                        '</HTML>'];
     sProcess.options.label1.Type    = 'label';
 
-    sProcess.options.method.Comment = { ['Intersection: &nbsp;&nbsp;&nbsp;' ...
-                                          'Create event <B>A^B</B> for occurrences of <B>A</B> during <B>B</B>'], ...
-                                         ['Difference: &nbsp;&nbsp;&nbsp;&nbsp;' ...
-                                          'Create event <B>A-B</B> for occurrences of <B>A</B> outside of <B>B</B>'] ; ...
+    sProcess.options.method.Comment = { ['Intersection<BR>', ...
+                                          '<FONT color=#7F7F7F>Create event <B>A^B</B> for occurrences of <B>A</B> during <B>B</B></FONT><BR>'], ...
+                                        ['Difference<BR>' ...
+                                          '<FONT color=#7F7F7F>Create event <B>A-B</B> for occurrences of <B>A</B> outside of <B>B</B></FONT><BR>'] ; ...
                                         'intersection', 'difference'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'intersection';
@@ -58,24 +60,26 @@ function sProcess = GetDescription()
                                        '<FONT color=#7F7F7F>(Separate multiple events using comma)</FONT><BR>'];
     sProcess.options.label2.Type    = 'label';
     % Nested events
-    sProcess.options.outer_events.Comment = 'Events A';
-    sProcess.options.outer_events.Type    = 'text';
-    sProcess.options.outer_events.Value   = '';
+    sProcess.options.nested.Comment = 'Events A';
+    sProcess.options.nested.Type    = 'text';
+    sProcess.options.nested.Value   = '';
     % Nesting events
-    sProcess.options.inner_events.Comment = 'Events B';
-    sProcess.options.inner_events.Type    = 'text';
-    sProcess.options.inner_events.Value   = '';
+    sProcess.options.nesting.Comment = 'Events B';
+    sProcess.options.nesting.Type    = 'text';
+    sProcess.options.nesting.Value   = '';
 
 
-    sProcess.options.label3.Comment = ['<B>Partial nesting</B><BR>', ...
-                                       '<FONT color=#7F7F7F>Consider occurrences of <B>A</B> partially nested in events <B>A</B></FONT>'];
+    sProcess.options.label3.Comment = ['<B>Partially nested occurrences</B><BR>', ...
+                                       '<FONT color=#7F7F7F>How to handle extended occurrences of <B>A</B> partially nested in <B>B</B></FONT>'];
     sProcess.options.label3.Type = 'label';
 
-    sProcess.options.partial_nesting.Comment = { 'Reject event: <FONT color=#7F7F7F>Remove epochs that are partially nested</FONT>', ...
-                                                  'Split event: <FONT color=#7F7F7F>Split epochs between the different events B</FONT>' ; ...
-                                                    'reject', 'split'};
+    sProcess.options.partial_nesting.Comment = {['Ignore<BR>', ...
+                                                 '<FONT color=#7F7F7F>Ignore <B>A</B> occurrences that are partially nested in <B>B</B></FONT><BR>'], ...
+                                                ['Split<BR>', ...
+                                                 '<FONT color=#7F7F7F>Keep only nested part of <B>A</B> occurrences that are partially nested in <B>B</B></FONT><BR>']; ...
+                                                'ignore', 'split'};
     sProcess.options.partial_nesting.Type    = 'radio_label';
-    sProcess.options.partial_nesting.Value   = 'split';
+    sProcess.options.partial_nesting.Value   = 'ignore';
 end
 
 
@@ -88,21 +92,22 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInput)
     % Return all the input files
-    OutputFiles     = {sInput.FileName};
+    OutputFiles = {sInput.FileName};
 
     % ===== GET OPTIONS =====
     % Combination string
-    innerEventsName = cellfun(@(x) strtrim(x), strsplit(sProcess.options.inner_events.Value, ','),  'UniformOutput',  false);
-    outerEventsName = cellfun(@(x) strtrim(x), strsplit(sProcess.options.outer_events.Value, ','),  'UniformOutput',  false);
+    nestedEventNames  = cellfun(@(x) strtrim(x), strsplit(sProcess.options.nested.Value, ','),  'UniformOutput',  false);
+    nestingEventNames = cellfun(@(x) strtrim(x), strsplit(sProcess.options.nesting.Value, ','), 'UniformOutput',  false);
 
-    if isempty(innerEventsName) || isempty(outerEventsName)
-        bst_report('Warning', sProcess, sInput, 'No event to combine. skipping');
+    if isempty(nestedEventNames) || isempty(nestingEventNames)
+        bst_report('Warning', sProcess, sInput, 'No events to combine. Skipping file...');
         return;
     end
 
+    % Get operation
+    method = sProcess.options.method.Value;
     % Get options
     partial_nesting = sProcess.options.partial_nesting.Value;
-    method = sProcess.options.method.Value;
 
     % ===== GET FILE DESCRIPTOR =====
     isRaw = strcmpi(sInput.FileType, 'raw');
@@ -117,50 +122,52 @@ function OutputFiles = Run(sProcess, sInput)
         sFile.events = DataMat.Events;
     end
 
-    % Process only continuous files
-    if isRaw && ~isempty(sFile.epochs)
-        bst_report('Error', sProcess, sInput, 'This function can only process continuous recordings (no epochs). Skipping File...');
-        return;
-    end
-
     % If no markers are present in this file
     if isempty(sFile.events)
-        bst_report('Warning', sProcess, sInput, 'This file does not contain any event. skipping');
+        bst_report('Warning', sProcess, sInput, 'This file does not contain any event. Skipping file...');
         return;
     end
 
-    [sEventsInner, missing_events_inner] = GetEvents(sFile.events, innerEventsName);
-    [sEventsOuter, missing_events_outer] = GetEvents(sFile.events, outerEventsName);
+    % Process only continuous files
+    if isRaw && ~isempty(sFile.epochs)
+        bst_report('Error', sProcess, sInput, 'This function can only process continuous recordings (no epochs).');
+        OutputFiles = {};
+        return;
+    end
 
-    missing_events = union(missing_events_inner, missing_events_outer);
+    % Check missing events
+    [sNestedEvents,  missing_nested_events]  = GetEvents(sFile.events, nestedEventNames);
+    [sNestingEvents, missing_nesting_events] = GetEvents(sFile.events, nestingEventNames);
+    missing_events = union(missing_nested_events, missing_nesting_events);
+    if isempty(sNestedEvents) || isempty(sNestingEvents)
+        bst_report('Warning', sProcess, sInput, 'This file does not contain any event. Skipping file...');
+        return;
+    end
     if ~isempty(missing_events)
         bst_report('Warning', sProcess, sInput, sprintf('The following events were not found in the file: %s.', strjoin(missing_events, ', ')));
     end
-    if isempty(sEventsInner) ||  isempty(sEventsOuter)
-        bst_report('Warning', sProcess, sInput, 'This file does not contain any event. skipping');
-        OutputFiles = sInput;
-        return;
-    end
     
-    isExtended = AreEventExtended(sEventsOuter);
+    % Nesting events must be extended
+    isExtended = IsExtendedEvent(sNestingEvents);
     if ~all(isExtended)
-        bst_report('Error', sProcess, sInput, sprintf('All nesting events must be extended events. The following events are simple events %s', strjoin({sEventsOuter(~isExtended).label}, ', '  )));
+        bst_report('Error', sProcess, sInput, ...
+                   sprintf('All nesting events must be extended events. The following events are simple events %s', ...
+                           strjoin({sNestingEvents(~isExtended).label}, ', ')));
+        OutputFiles = {};
         return;
     end
     
-    % Create binary mask for the outer events
-    mask = Event2Mask(sFile.Time, sEventsOuter);
-    for iEvent = 1:length(sEventsInner)
-        newEvents = ClassifyEvent(sFile.Time, sEventsInner(iEvent), mask, sEventsOuter, partial_nesting, method);
-        
+    % Create binary mask for the nesting events
+    mask = Event2Mask(sFile.Time, sNestingEvents);
+    for iEvent = 1:length(sNestedEvents)
+        newEvents = ClassifyEvent(sFile.Time, sNestedEvents(iEvent), mask, sNestingEvents, partial_nesting, method);    
         for iNewEvent = 1:length(newEvents)
-            % If there is at least one epoch, we add the event
+            % If there is at least one occurrence, add the event
             if length(newEvents(iNewEvent).epochs) >= 1
                 sFile.events(end+1) = newEvents(iNewEvent);
             end
         end
     end
-
 
     % ===== SAVE RESULT =====
     % Report results
@@ -174,32 +181,24 @@ end
 
 function [events, missing_events] = GetEvents(sEvents, eventNames)
 % Return the events based on their name
-
     event_idx = zeros(1, length(eventNames));
     missing_events = {};
-
-
     for iEvt = 1:length(eventNames)
         idx = find(strcmp({sEvents.label}, eventNames{iEvt}));
-
         if isempty(idx)
             missing_events{end+1} =  eventNames{iEvt};
             continue;
         end
-    
         event_idx(iEvt) = idx;
     end
-    
     event_idx = event_idx(event_idx > 0);
     events = sEvents(event_idx);
 end
 
 function mask = Event2Mask(Time, sEvents)
-% create a binary mask of the events. 
-
+% Create a binary mask of the events.
     mask = false(length(sEvents), length(Time));
-    isExtended = AreEventExtended(sEvents);
-
+    isExtended = IsExtendedEvent(sEvents);
     for iEvt = 1:length(sEvents)
         for iTime = 1:size(sEvents(iEvt).times, 2)
             if isExtended(iEvt)
@@ -215,28 +214,24 @@ function mask = Event2Mask(Time, sEvents)
 end
 
 function event_time = Mask2Time(Time, mask)
-    % Find the event start and end from the mask. mask is a
-    % binary vector. The event start at each transition from 0 to 1 and end
-    % at each transition from 1 to 0.
-
-
+% Find the event start and end from the mask.
+% mask is a binary vector. The event starts at each transition from 0 to 1, and
+% ends at each transition from 1 to 0.
     tmp = diff(mask); 
     start_segment = find(tmp == 1) + 1; 
     end_segment   = find(tmp == -1);
-
     if length(start_segment) ==  length(end_segment) -1
         start_segment = [1 start_segment];
     end     
     if length(start_segment) ==  length(end_segment) +1
         end_segment = [ end_segment length(Time)];
     end  
-
     event_time  = [ Time(start_segment) ;  Time(end_segment)  ];
-
 end
 
-function newEvents = CreateNewEvents(sEventsInner,  sEventsOuter,  partial_nesting, method)
-    newEvents = repmat(db_template('event'), 1, 1 + length(sEventsOuter));
+function newEvents = CreateNewEvents(sNestedEvent, sNestingEvents, partial_nesting, method)
+% Create (empty) new event to store results from the operation between nested and nesting events
+    newEvents = repmat(db_template('event'), 1, 1 + length(sNestingEvents));
 
     switch method
         case 'intersection'
@@ -247,25 +242,25 @@ function newEvents = CreateNewEvents(sEventsInner,  sEventsOuter,  partial_nesti
             error('Unknown opperation %s', method)
     end
     
-    if AreEventExtended(sEventsInner) && strcmpi(partial_nesting, 'split')
+    if IsExtendedEvent(sNestedEvent) && strcmpi(partial_nesting, 'split')
         suffix = '_partial';
     else
         suffix = '';
     end
 
-    for iEvents = 1:length(sEventsOuter)
-        newEvents(iEvents).label = sprintf('%s%s%s%s', sEventsOuter.label, separator, sEventsInner.label, suffix);
-        newEvents(iEvents).color = MixColors(sEventsOuter(iEvents).color, ...
-                                             sEventsInner.color);    
+    for iNesting = 1:length(sNestingEvents)
+        newEvents(iNesting).label = sprintf('%s%s%s%s', sNestedEvent.label, separator, sNestingEvents(iNesting).label, suffix);
+        newEvents(iNesting).color = MixColors(sNestedEvent.color, sNestingEvents(iNesting).color);
     end
-    
-    newEvents(end).label = sprintf('%s%s%s%s', sEventsInner.label, separator, 'unknown', suffix);
+    newEvents(end).label = sprintf('%s%s%s%s', sNestedEvent.label, separator, 'unknown', suffix);
     newEvents(end).color = [0, 0, 0];
 end
 
 
-function newEvents = ClassifyEvent(Time, sEventsInner, mask, sEventsOuter, partial_nesting, method)
-% classifyEvents
+function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, partial_nesting, method)
+% Perform the operation ('method') between the sNestedEvent occurrences and sNestingEvents
+%
+% Example:
 % out        |--------------------|     |----------| 
 % inp               *    *            *         *
 % inx             |----------|        |-----|          |---------|
@@ -273,7 +268,7 @@ function newEvents = ClassifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
 % ^  = Intersection
 % -  = Differences
 % _T = partial_nesting = split
-% _F = partial_nesting = reject
+% _F = partial_nesting = ignore
 % 
 % So the resulting events would be 
 % inp^out           *    *                      *
@@ -284,7 +279,7 @@ function newEvents = ClassifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
 % inx-out_T                           |-|              |---------|
 % inx-out_F                                            |---------|
 
-    newEvents = CreateNewEvents(sEventsInner,  sEventsOuter,  partial_nesting, method);
+    newEvents = CreateNewEvents(sNestedEvent, sNestingEvents, partial_nesting, method);
     
     % Add one row to the mask for the other case 
     % Ensure that all time point belongs to one category
@@ -294,10 +289,10 @@ function newEvents = ClassifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
     % Compute each of the following 4 case separately 
     % (extended event = true/ false, operation = intersection / difference)
 
-    isExtended = AreEventExtended(sEventsInner);
+    isExtended = IsExtendedEvent(sNestedEvent);
     if strcmp(method, 'intersection')  && ~isExtended
-        for iTime = 1:size(sEventsInner.times, 2)
-            [~, idx_time] = min(abs(Time - sEventsInner.times(1, iTime))); 
+        for iTime = 1:size(sNestedEvent.times, 2)
+            [~, idx_time] = min(abs(Time - sNestedEvent.times(1, iTime)));
             
             % Find which nesting event is occurring at that time
             event_mask = mask(:, idx_time);
@@ -305,25 +300,25 @@ function newEvents = ClassifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
             iEvent = unique(iEvent);
 
             % Assign time
-            newEvents(iEvent).times(end+1) = sEventsInner.times(iTime);
+            newEvents(iEvent).times(end+1) = sNestedEvent.times(iTime);
             newEvents(iEvent).epochs(end+1) = 1;
         end
     else 
-        % Generate binary mask for the event, then compute intersection
-        inner_mask = Event2Mask(Time, sEventsInner);
+        % Generate binary mask for the nested event, then compute intersection
+        nested_mask = Event2Mask(Time, sNestedEvent);
 
         % To compute the difference, we jut invert the mask
         if strcmp(method, 'difference')
-            inner_mask = ~inner_mask;
+            nested_mask = ~nested_mask;
         end
         
         % Compute intersection
-        intersection = mask .* repmat(inner_mask, size(mask, 1), 1);
+        intersection = mask .* repmat(nested_mask, size(mask, 1), 1);
 
-        % Remove inner event overlapping multiple outer events
-        if strcmp(partial_nesting, 'reject')
-            for iOccurance = 1:size(sEventsInner.times, 2)
-                idx_time = panel_time('GetTimeIndices', Time, sEventsInner.times(:, iOccurance));
+        % Remove nested event overlapping multiple nesting events
+        if strcmp(partial_nesting, 'ignore')
+            for iOccurance = 1:size(sNestedEvent.times, 2)
+                idx_time = panel_time('GetTimeIndices', Time, sNestedEvent.times(:, iOccurance));
 
                 event_mask = mask(:, idx_time);
                 [~, iEvent] = max(event_mask, [], 1);
@@ -350,18 +345,16 @@ function newEvents = ClassifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
     end
 
     % Remove unclassified events
-    newEvents = newEvents(1:length(sEventsOuter));
+    newEvents = newEvents(1:length(sNestingEvents));
 end
 
-function isExtended = AreEventExtended(sEvents)
-% areEventExtended: Return whether the events sEvents are extended (true) or
-% simple events. isExtended is a vector that is 1 x nEvents
-
+function isExtended = IsExtendedEvent(sEvents)
+% IsExtendedEvent: Return whether the events sEvents are extended (true) or simple events.
+% isExtended is a vector that is 1 x nEvents
     isExtended = false(1, length(sEvents));
     for iEvent = 1:length(sEvents)
         isExtended(iEvent) = size(sEvents(iEvent).times, 1) == 2;
     end
-
 end
 
 function mixed = MixColors(color1, color2, weight)
