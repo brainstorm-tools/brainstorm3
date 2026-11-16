@@ -322,7 +322,7 @@ function newEvents = ClassifyEvent(Time, sNestedEvent, mask, sNestingEvents, par
                 continue;
             end
             newEvents(iEvent).times  = [newEvents(iEvent).times, new_time];
-            newEvents(iEvent).epochs = [newEvents(iEvent).epochs, ones(size(new_time, 2), 1)];
+            newEvents(iEvent).epochs = [newEvents(iEvent).epochs, ones(1, size(new_time, 2))];
         end
     end
 end
