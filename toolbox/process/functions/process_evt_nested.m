@@ -217,9 +217,11 @@ function event_time = Mask2Time(Time, mask)
 % Find the event start and end from the mask.
 % mask is a binary vector. The event starts at each transition from 0 to 1, and
 % ends at each transition from 1 to 0.
-    tmp = diff(mask); 
-    start_segment = find(tmp == 1) + 1; 
-    end_segment   = find(tmp == -1);
+    % Zero-padd to avoid mask starting or ending with 1s
+    tmp = diff([0, mask, 0]);
+    % Adjust with "- 1" due to the zero-padding
+    start_segment = find(tmp ==  1) + 1 - 1;
+    end_segment   = find(tmp == -1)      -1;
     if length(start_segment) ==  length(end_segment) -1
         start_segment = [1 start_segment];
     end     
