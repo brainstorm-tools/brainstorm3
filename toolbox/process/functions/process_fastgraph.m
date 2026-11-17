@@ -528,7 +528,7 @@ function sContactGroupLocIdxs = SortSeegContacts(ChannelMat)
     % Get index of SEEG channel type
     iSeegs = channel_find(ChannelMat.Channel, 'SEEG');
     % For each SEEG Concact, if no valid location, add temporary Loc based on the Group Name
-    for ix = 1 : iSeegs
+    for ix = 1 : length(iSeegs)
         iSeeg = iSeegs(ix);
         if isempty(ChannelMat.Channel(iSeeg).Loc) || all(ChannelMat.Channel(iSeeg).Loc == 0) || any(isnan(ChannelMat.Channel(iSeeg).Loc))            
             % SEEG groups in Left hemisphere end with an apostrophe
