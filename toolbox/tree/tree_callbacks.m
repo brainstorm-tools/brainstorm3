@@ -1375,10 +1375,11 @@ switch (lower(action))
             case {'noisecov', 'ndatacov'}
                 if (length(bstNodes) == 1)
                     % Get modalities for first selected file
-                    AllMod = intersect(bst_get('ChannelModalities', filenameRelative), {'MEG', 'MEG MAG', 'MEG GRAD', 'EEG', 'SEEG', 'ECOG'});
+                    AllMod = intersect(bst_get('ChannelModalities', filenameRelative), {'MEG', 'MEG MAG', 'MEG GRAD', 'EEG', 'NIRS', 'SEEG', 'ECOG'});
                     % Display as image
                     if (length(AllMod) == 1)
                         gui_component('MenuItem', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_noisecov(filenameRelative));
+                        gui_component('MenuItem', jPopup, [], 'Display as image [NxN]', IconLoader.ICON_NOISECOV, [], @(h,ev)view_covariance(filenameRelative, 'image'));
                     elseif (length(AllMod) > 1)
                         % All sensors
                         jMenuDisplay = gui_component('Menu', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], []);
