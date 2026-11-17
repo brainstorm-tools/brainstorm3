@@ -384,6 +384,12 @@ if isUpdateScs || isUpdateNcs
 end
 
 
+% ===== PET METADATA =====
+% Methods that rebuild the volume from a NIfTI file drop the PET metadata: copy it back
+if isfield(sMriSrc, 'PET') && ~isempty(sMriReg)
+    sMriReg.PET = sMriSrc.PET;
+end
+
 % ===== SAVE NEW FILE =====
 % Add file tag
 if isReslice
