@@ -201,9 +201,87 @@ if ~isHp
 end
 
 
+% ===== DISPLAY MEG FIDUCIALS =====
+
+% This is useful to validate the digitized MEG fiducials (head coils) by comparing them to their
+% relative positions as measured by the MEG.  Or if they were not digitized or the digitization is
+% inaccurate, the MEG fiducials positions can be used to align instead.
+
+% Load data if CTF MEG raw, to get initial head coil positions. Only channel file is loaded in
+% memory above with view_helmet or view_channels. We need to load the data to check if it's CTF MEG.
+isCtfMegRaw = false;
+if isMeg
+    % Look for the first raw data file for this channel file.
+    DataFiles = bst_get('DataForChannelFile', ChannelFile);
+    DataFile = [];
+    for iData = 1:length(DataFiles)
+        [~, FileName] = fileparts(DataFiles{iData});
+        if (length(FileName) > 9) && ~isempty(strfind(FileName, 'data_0raw')) % isRaw
+            DataFile = DataFiles{iData};
+            break;
+        end
+    end
+    if ~isempty(DataFile)
+        % Check if CTF dataset
+        DataMat = in_bst_data(DataFile, {'Device', 'F'});
+        if strcmp(DataMat.Device, 'CTF')
+            isCtfMegRaw = true;
+        end
+    end
+end
+
+if isCtfMegRaw
+    % Look for head coils in data file header.
+    HeadCoils = [];
+    if isfield(DataMat, 'F') && isfield(DataMat.F, 'header') && ...
+            isfield(DataMat.F.header, 'hc') && isfield(DataMat.F.header.hc, 'SCS')
+        % Make a headpoint-like structure.
+        HeadCoils.Loc = [DataMat.F.header.hc.SCS.NAS', ...
+            DataMat.F.header.hc.SCS.LPA', ...
+            DataMat.F.header.hc.SCS.RPA']; % coordinates as columns
+        HeadCoils.Label = {'MEG-N', 'MEG-L', 'MEG-R'};
+        HeadCoils.Type = {'HPI', 'HPI', 'HPI'};
+    end
+
+    if ~isempty(HeadCoils)
+        % Apply all MEG transformations in channel file to go from "dewar" to "SCS".
+        ChannelMat = in_bst_channel(ChannelFile);
+        T = eye(4);
+        for t = 1:numel(ChannelMat.TransfMeg)
+            T = ChannelMat.TransfMeg{t} * T;
+        end
+        HeadCoils.Loc = T(1:3,:) * [HeadCoils.Loc; 1, 1, 1];
+
+        figure_3d('ViewHeadCoils', hFig, true, HeadCoils) % isVisible
+
+        % Find figure handles for MEG-measured head coils.
+        mrkTag = 'HeadCoilsMarkers';
+        lblTag = 'HeadCoilsLabels';
+        hHeadCoilsMarkers = findobj(hFig, 'Tag', mrkTag);
+        hHeadCoilsLabels  = findobj(hFig, 'Tag', lblTag);
+        isHeadCoils = ~isempty(hHeadCoilsMarkers);
+        HeadCoilsMarkersLoc = [];
+        HeadCoilsLabelsLoc  = [];
+        if isHeadCoils
+            % Get markers positions
+            HeadCoilsMarkersLoc = [get(hHeadCoilsMarkers, 'XData')', ...
+                get(hHeadCoilsMarkers, 'YData')', ...
+                get(hHeadCoilsMarkers, 'ZData')'];
+            HeadCoilsLabelsLoc = get(hHeadCoilsLabels,'Position');
+            if ~isempty(HeadCoilsLabelsLoc) && iscell(HeadCoilsLabelsLoc) % expected
+                % Save as matrix instead of cells.
+                HeadCoilsLabelsLoc = cat(1, HeadCoilsLabelsLoc{:});
+            end
+        end
+    end
+else
+    isHeadCoils = false;
+end
+
+
 % ===== DISPLAY HEAD POINTS =====
 % Display head points
-figure_3d('ViewHeadPoints', hFig, 1);
+figure_3d('ViewHeadPoints', hFig, 1, 1); % visible and color-coded
 % Get patch and vertices
 hHeadPointsMarkers = findobj(hFig, 'Tag', 'HeadPointsMarkers');
 hHeadPointsLabels  = findobj(hFig, 'Tag', 'HeadPointsLabels');
@@ -216,7 +294,9 @@ HeadPointsFidLoc     = [];
 HeadPointsHpiLoc     = [];
 if isHeadPoints
     % More transparency to view points inside.
-    panel_surface('SetSurfaceTransparency', hFig, 1, 0.5);
+    panel_surface('SetSurfaceTransparency', hFig, 1, 0.4);
+    % Hide MEG helmet
+    set(hHelmetPatch, 'visible', 'off');
     % Get markers positions
     HeadPointsMarkersLoc = get(hHeadPointsMarkers, 'Vertices');
     % Hide HeadPoints when looking at EEG and number of EEG channels is the same as headpoints
@@ -245,12 +325,12 @@ end
 % ===== DISPLAY MRI FIDUCIALS =====
 % Get the fiducials positions defined in the MRI volume
 if ~isempty(sSubject.iAnatomy)
-    sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'SCS');
+    sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'SCS', 'History');
     if ~isempty(sMri.SCS.NAS) && ~isempty(sMri.SCS.LPA) && ~isempty(sMri.SCS.RPA)
         % Convert coordinates MRI => SCS
         MriFidLoc = [cs_convert(sMri, 'mri', 'scs', sMri.SCS.NAS ./ 1000); ...
-                     cs_convert(sMri, 'mri', 'scs', sMri.SCS.LPA ./ 1000); ...
-                     cs_convert(sMri, 'mri', 'scs', sMri.SCS.RPA ./ 1000)];
+            cs_convert(sMri, 'mri', 'scs', sMri.SCS.LPA ./ 1000); ...
+            cs_convert(sMri, 'mri', 'scs', sMri.SCS.RPA ./ 1000)];
         % Display fiducials
         line(MriFidLoc(:,1), MriFidLoc(:,2), MriFidLoc(:,3), ...
             'Parent',          findobj(hFig, 'Tag', 'Axes3D'), ...
@@ -262,6 +342,8 @@ if ~isempty(sSubject.iAnatomy)
             'Marker',          'o', ...
             'Tag',             'MriPointsFid');
     end
+else
+    sMri = [];
 end
 
 % ===== CONFIGURE HEAD SURFACE =====
@@ -307,6 +389,14 @@ gChanAlign.HeadPointsFidLoc     = HeadPointsFidLoc;
 gChanAlign.HeadPointsHpiLoc     = HeadPointsHpiLoc;
 gChanAlign.HeadPointsMarkersSel  = [];
 gChanAlign.hHeadPointsMarkersSel = [];
+gChanAlign.isHeadCoils     = isHeadCoils;
+gChanAlign.isAuto          = false;
+if isHeadCoils
+    gChanAlign.hHeadCoilsMarkers   = hHeadCoilsMarkers;
+    gChanAlign.hHeadCoilsLabels    = hHeadCoilsLabels;
+    gChanAlign.HeadCoilsMarkersLoc = HeadCoilsMarkersLoc;
+    gChanAlign.HeadCoilsLabelsLoc  = HeadCoilsLabelsLoc;
+end
 
 % ===== CONFIGURE FIGURE =====
 % Get figure description in GlobalData structure
@@ -427,6 +517,8 @@ if isProgress
     bst_progress('stop');
 end
 
+% Check and print to command window if previously auto/manual registration, and if MRI fids updated.
+process_adjust_coordinates('CheckPrevAdjustments', in_bst_channel(ChannelFile), sMri);
 end
 
 %% ===== MOUSE CALLBACKS =====  
@@ -542,6 +634,8 @@ function ComputeTransformation(val)
     ApplyTransformation(iSelChan, Rnew, Tnew, Rescale);
     % Update display 
     UpdatePoints(iSelChan);
+    % Indicate manual change
+    gChanAlign.isAuto = false;
 end
 
 
@@ -575,6 +669,14 @@ function ApplyTransformation(iSelChan, Rnew, Tnew, Rescale)
                 gChanAlign.HeadPointsLabelsLoc = gChanAlign.HeadPointsLabelsLoc * Rnew';
             end
         end
+        if gChanAlign.isHeadCoils
+            % Move markers
+            gChanAlign.HeadCoilsMarkersLoc = gChanAlign.HeadCoilsMarkersLoc * Rnew';
+            % Move labels
+            if ~isempty(gChanAlign.HeadCoilsLabelsLoc)
+                gChanAlign.HeadCoilsLabelsLoc = gChanAlign.HeadCoilsLabelsLoc * Rnew';
+            end
+        end
         % Add this transformation to the final transformation
         newTransf = eye(4);
         newTransf(1:3,1:3) = Rnew;
@@ -605,6 +707,14 @@ function ApplyTransformation(iSelChan, Rnew, Tnew, Rescale)
                 gChanAlign.HeadPointsLabelsLoc = bst_bsxfun(@plus, gChanAlign.HeadPointsLabelsLoc, Tnew);
             end
         end
+        if gChanAlign.isHeadCoils
+            % Move markers
+            gChanAlign.HeadCoilsMarkersLoc = bst_bsxfun(@plus, gChanAlign.HeadCoilsMarkersLoc, Tnew);
+            % Move labels
+            if ~isempty(gChanAlign.HeadCoilsLabelsLoc)
+                gChanAlign.HeadCoilsLabelsLoc = bst_bsxfun(@plus, gChanAlign.HeadCoilsLabelsLoc, Tnew);
+            end
+        end
         % Add this transformation to the final transformation
         newTransf = eye(4);
         newTransf(1:3,4) = Tnew;
@@ -633,6 +743,7 @@ function ApplyTransformation(iSelChan, Rnew, Tnew, Rescale)
                         gChanAlign.HeadPointsLabelsLoc(:,iDim)  = gChanAlign.HeadPointsLabelsLoc(:,iDim)  * Rescale(iDim);
                     end
                 end
+                % Rescaling not applicable to MEG: helmet and head coils not transformed here.
             end
         end
     end
@@ -666,8 +777,10 @@ function UpdatePoints(iSelChan)
     if gChanAlign.isHeadPoints
         % Extra head points
         set(gChanAlign.hHeadPointsMarkers, 'Vertices', gChanAlign.HeadPointsMarkersLoc);
-        if strcmpi(get(gChanAlign.hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
-            % Update distance color
+        if strcmpi(get(gChanAlign.hHeadPointsMarkers, 'MarkerFaceColor'), 'flat') && ...
+                isvalid(gChanAlign.hSurfacePatch)
+            % Update distance color, if surface still present. (Need to remove surface to be able to
+            % select points manually inside it.)
             Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
                 get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
             set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000);
@@ -704,6 +817,19 @@ function UpdatePoints(iSelChan)
                 % Recreate with selected vetices
                 set(gChanAlign.hHeadPointsMarkersSel, 'Vertices', gChanAlign.HeadPointsMarkersLoc(ix,:), 'Faces', [1:length(ix)]);
             end
+        end
+    end
+    % Update head coils and labels
+    if gChanAlign.isHeadCoils
+        % Markers
+        set(gChanAlign.hHeadCoilsMarkers, ...
+            'XData', gChanAlign.HeadCoilsMarkersLoc(:,1), ...
+            'YData', gChanAlign.HeadCoilsMarkersLoc(:,2), ...
+            'ZData', gChanAlign.HeadCoilsMarkersLoc(:,3));
+        % Labels
+        for i = 1:size(gChanAlign.hHeadCoilsLabels, 1)
+            set(gChanAlign.hHeadCoilsLabels(i), 'Position', ...
+                [1.05, 1.05, 1.03] .* gChanAlign.HeadCoilsLabelsLoc(i,:));
         end
     end
 end
@@ -778,6 +904,7 @@ function [ChannelMat, newtransf, iChanModified] = GetCurrentChannelMat(isAll)
     end
     % Ask if needed to update also the other modalities
     if isempty(isAll)
+        % TODO We might have < 10 but still want to update electrodes. Verify instead if there are real EEG (not just ECG EOG)
         if (gChanAlign.isMeg || gChanAlign.isNirs) && (length(iEeg) > 10)
             isAll = java_dialog('confirm', 'Do you want to apply the same transformation to the EEG electrodes ?', 'Align sensors');
         elseif ~gChanAlign.isMeg && ~isempty(iMeg)
@@ -877,8 +1004,13 @@ function [ChannelMat, newtransf, iChanModified] = GetCurrentChannelMat(isAll)
     ChannelMat.Comment = str_remove_parenth(ChannelMat.Comment, '(');
     ChannelMat.Comment = [ChannelMat.Comment, sprintf(' (%d)', length(ChannelMat.Channel))];
 
-    % History: Align channel files manually
-    ChannelMat = bst_history('add', ChannelMat, 'align', 'Align channels manually:');
+    % History: Align channels
+    if gChanAlign.isAuto
+        AlignMsg = 'Refining the registration using the head points:';
+    else
+        AlignMsg = 'Align channels manually:';
+    end
+    ChannelMat = bst_history('add', ChannelMat, 'align', AlignMsg);
     % History: Rotation + translation
     ChannelMat = bst_history('add', ChannelMat, 'transform', sprintf('Rotation: [%1.3f,%1.3f,%1.3f; %1.3f,%1.3f,%1.3f; %1.3f,%1.3f,%1.3f]', Rfinal'));
     ChannelMat = bst_history('add', ChannelMat, 'transform', sprintf('Translation: [%1.3f,%1.3f,%1.3f]', Tfinal));
@@ -892,49 +1024,48 @@ end
 function AlignClose_Callback(varargin)
     global gChanAlign;
     if gChanAlign.isChanged
-        % Sensors or headpoints changed
+        isCancel = false;
         strTitle = 'Align sensors';
         strType  = 'sensor';
-        if gChanAlign.isHp
-            strTitle = 'Head points';
-            strType  = 'head points';
-        end
-
         % Ask user to save changes (only if called as a callback)
         if (nargin == 3)
-            SaveChanged = 1;
+            SaveChanges = 1;
         else
-            SaveChanged = java_dialog('confirm', ['The ' strType ' locations changed.' 10 10 ...
-                    'Would you like to save changes? ' 10 10], 'Align sensors');
+            [SaveChanges, isCancel] = java_dialog('confirm', ['The ' strType ' locations changed.' 10 10 ...
+                'Would you like to save changes? ' 10 10], strTitle);
+        end
+        % Don't close figure if cancelled.
+        if isCancel
+            return;
+        end
+        % Get new positions
+        [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
+        % Load original channel file
+        ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
+        % Report (in command window) max head and sensor displacements from changes.
+        if SaveChanges && gChanAlign.isHeadPoints
+            process_adjust_coordinates('CheckCurrentAdjustments', ChannelMat, ChannelMatOrig);
         end
         % Save changes to channel file and close figure
-        if SaveChanged
+        if SaveChanges
             % Progress bar
             bst_progress('start', strTitle, 'Updating channel file...');
             % Restore standard close callback for 3DViz figures
             set(gChanAlign.hFig, 'CloseRequestFcn', gChanAlign.Figure3DCloseRequest_Bak);
             drawnow;
-            % Get new positions
-            [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
-            % Load original channel file
-            ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
             % Save new electrodes positions in ChannelFile
             bst_save(gChanAlign.ChannelFile, ChannelMat, 'v7');
             % Get study associated with channel file
             [sStudy, iStudy] = bst_get('ChannelFile', gChanAlign.ChannelFile);
             % Reload study file
             db_reload_studies(iStudy);
+            % Apply to other recordings with same sensor locations in the same subject
+            CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
             bst_progress('stop');
         end
-    else
-        SaveChanged = 0;
     end
     % Only close figure
     gChanAlign.Figure3DCloseRequest_Bak(varargin{1:2});
-    % Apply to other recordings with same sensor locations in the same subject
-    if SaveChanged && ~gChanAlign.isHp
-        CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
-    end
 end
 
 
@@ -1213,6 +1344,8 @@ function RefineWithHeadPoints(varargin)
     ApplyTransformation(iSelChan, Rnew, Tnew(:)', []);
     % Update display
     UpdatePoints(iSelChan);
+    % Note that automatic registration was done
+    gChanAlign.isAuto = true;
 end
 
 
@@ -1458,7 +1591,7 @@ end
 
 %% ===== DELETE HEADPOINTS =====
 function RemoveHeadpoints(varargin)
-    global GlobalData gChanAlign;
+    global gChanAlign;
     if isempty(gChanAlign.HeadPointsMarkersSel)
         % Nothing to do
         return

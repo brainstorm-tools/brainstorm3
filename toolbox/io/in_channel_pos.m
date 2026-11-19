@@ -146,8 +146,8 @@ try
             if numel(iTrans) ~= 1
                 error('Unexpected transformation(s).')
             end
-            % And for EEG
             ChannelMat.TransfMegLabels{iTrans} = 'RawPoints=>Native';
+            % And for EEG
             iTrans = find(strcmpi(ChannelMat.TransfEegLabels, 'Native=>Brainstorm/CTF'));
             if numel(iTrans) ~= 1
                 error('Unexpected transformation(s).')
