@@ -111,6 +111,8 @@ sFile.channelflag  = ones(hdr.nchan,1);
 sFile.device       = 'CED Spike2';
 sFile.header       = hdr;
 sFile.acq_date     = datestr(datenum(hdr.timedate(7), hdr.timedate(6), hdr.timedate(5)), 'dd-mmm-yyyy');
+sFile.t0           = str_datetime(datetime(sFile.acq_date, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US') + ...
+                                  hours(hdr.timedate(4)) + minutes(hdr.timedate(3)) + seconds(hdr.timedate(2)));
 % Comment: short filename
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;

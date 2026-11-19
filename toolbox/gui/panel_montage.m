@@ -854,6 +854,11 @@ function newName = NewMontage(MontageType, ChanNames, hFig)
         bst_error('This montage name already exists.', 'New montage', 0);
         newName = [];
         return
+    elseif ~isempty(strfind(newName, '[tmp]'))
+        bst_error(['<HTML>New montage name should not include the tag <B>[tmp]</B>.' 10 ...
+                   'This tag is reserved for Brainstorm dynamic montages.'], 'New montage', 0);
+        newName = [];
+        return
     end
     % Make sure Channels is a cell list of strings
     if isempty(ChanNames) || ~iscell(ChanNames)
@@ -1332,7 +1337,7 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             end
             % Not CTF-MEG: Skip head motion distance
             if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Head distance') && ((~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'MEG', 'HLU'})) ...
-                    || ((isfield(GlobalData.DataSet(iDS).Measures.sFile, 'device') && ~strcmpi(GlobalData.DataSet(iDS).Measures.sFile.device, 'CTF')) ...
+                    || ((isfield(GlobalData.DataSet(iDS).Measures.sFile, 'device') && ~any(strcmpi(strsplit(GlobalData.DataSet(iDS).Measures.sFile.device, ','), 'CTF'))) ...
                     && isempty(strfind(GlobalData.DataSet(iDS).ChannelFile, 'channel_ctf'))))
                 continue;
             end
@@ -2521,21 +2526,6 @@ function AddAutoMontagesNirs(ChannelMat)
         dispColor = dispColor(:)';
         % Display name: NAME|COLOR
         sMontage.DispNames{i} = sprintf('S%dD%d|%s', S, D, dispColor);
-    end
-    % Add HbT sum, if not present
-    if ~isempty(iHbO) && ~isempty(iHbR) && isempty(iHbT)
-        % Get the HbO/HbR channels
-        iHbO = find(strcmpi({ChannelMat.Channel(iNirs).Group}, 'hbo'));
-        iHbR = find(strcmpi({ChannelMat.Channel(iNirs).Group}, 'hbr'));
-        % Add one HbT channel for each HbO channel
-        for i = 1:length(iHbO)
-            % Parse channel name
-            [S,D,WL] = ParseNirsChannelNames({ChannelMat.Channel(iHbO(i)).Name});
-            % Display in green
-            sMontage.DispNames{length(iNirs) + i} = sprintf('S%dD%d|%s', S, D, '00FF00');
-            % Sum the two values HbO and HbR
-            sMontage.Matrix(length(iNirs) + i, [iHbO(i), iHbR(i)]) = 1;
-        end
     end
     % Add montage: overlay
     SetMontage(sMontage.Name, sMontage);

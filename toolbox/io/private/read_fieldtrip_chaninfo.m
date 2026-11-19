@@ -20,6 +20,7 @@ function ChannelMat = read_fieldtrip_chaninfo(ChannelMat, ftMat)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2017-2021
+%          Raymundo Cassani, 2026
 
 %% ===== FIND INFO FIELDS =====
 % Get EEG info structure (FieldTrip or SPM)
@@ -49,18 +50,32 @@ gradChanTypes = [];
 coilChan = [];
 if ~isempty(grad)
     % Initialize FieldTrip
-    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'fieldtrip');
     if ~isInstalled
         error(errMsg);
     end
     % Fix glitches in the structure
     grad = ft_datatype_sens(grad);
-    % Save channel types, if they exist
-    if isfield(grad, 'chantype') && ~isempty(grad.chantype)
-        gradChanTypes = grad.chantype;
-    end
     
     % Get the list of montages to undo
+    if isfield(grad, 'balance') && isfield(grad.balance, 'current') && iscell(grad.balance.current)
+        % Revert from on field (grad.balance.current) to two fields (grad.balance.previous and grad.balance.current)
+        if ~isempty(grad.balance.current)
+            % Get grad.balance.previous as [second-last, ..., second, first applied]
+            if bst_plugin('CompareVersions', PlugDesc.Version, '20260511') >=0
+                % grad.balance.current is saved as [first, second, ..., second-last, last applied]
+                grad.balance.previous = grad.balance.current(end-1:-1:1);
+            else
+                % grad.balance.current is saved as [second-last, ..., second, first, last applied]
+                grad.balance.previous = grad.balance.current(1:end-1);
+            end
+            % grad.balance.current(end) = [last applied]
+            grad.balance.current  = grad.balance.current{end};
+        else
+            grad.balance.current = 'none';
+        end
+    end
+    % Montage list order {last, ... second, first applied}
     montageList = {grad.balance.current};
     if isfield(grad.balance, 'previous') && ~isempty(grad.balance.previous)
         montageList = cat(2, montageList, grad.balance.previous{:});
@@ -80,9 +95,24 @@ if ~isempty(grad)
             end
         end
         % Reverse transformation
-        grad = ft_apply_montage(grad, grad.balance.(mont), 'keepunused', 'yes', 'inverse', 'yes');
+        try
+            grad = ft_apply_montage(grad, grad.balance.(mont), 'keepunused', 'yes', 'inverse', 'yes');
+        catch ME
+            % Error that "inverse" option is not support anymore in ft_apply_montage
+            if ~isempty(strfind(ME.message, '"inverse"')) && ~isempty(strfind(ME.message, 'FT_INVERSE_MONTAGE'))
+                tmp_inv_montage = ft_inverse_montage(grad.balance.(mont));
+                grad = ft_apply_montage(grad, tmp_inv_montage, 'keepunused', 'yes');
+            else
+                rethrow(ME)
+            end
+        end
         % Add to the list of projectors to process
+        % Order: {last, ... second, first applied}
         projList{end+1} = mont;
+    end
+    % Save channel types, if they exist
+    if isfield(grad, 'chantype') && ~isempty(grad.chantype)
+        gradChanTypes = grad.chantype;
     end
     % If TRA matrix is not a binary coil-channel adjacency matrix
     if any(~ismember(unique(grad.tra), [-1 0 1]))

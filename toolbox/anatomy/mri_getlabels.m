@@ -8,7 +8,6 @@ function [Labels, AtlasName] = mri_getlabels(MriFile, sMri, isForced)
 % INPUT:
 %    - MriFile   : Full path to the volume atlas (eg. '/path/to/aseg.mgz')
 %    - sMri      : Braistorm MRI structure
-%    - AtlasName : Name of the atlas: {'aseg', 'marsatlas'}
 %    - isForced  : Create labels based on the numeric labels if text labels are missing
 % 
 % OUTPUT:
@@ -71,7 +70,17 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
     % LABELS SimNIBS4: Try to get a side _LUT.txt with the labels
     LabelsFile = bst_fullfile(fPath, [fBase, '_LUT.txt']);
     if file_exist(LabelsFile)
-        Labels = in_label_simnibs(LabelsFile);
+        Labels = in_label_lut(LabelsFile);
+    end
+    % LABELS FreeSurfer: Try to get a side LUT.txt with the labels
+    LabelsFile = bst_fullfile(fPath, [fBase, 'LUT.txt']);
+    if file_exist(LabelsFile)
+        Labels = in_label_lut(LabelsFile);
+    end
+    % LABELS ITK-SnAP: Try to get a side .label with the labels
+    LabelsFile = bst_fullfile(fPath, [fBase, '.label']);
+    if file_exist(LabelsFile)
+        Labels = in_label_itksnap(LabelsFile);
     end
 
     % If labels were read: use the filename as the atlas name
@@ -81,8 +90,23 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
     % Standard atlases (FreeSurfer/ASEG, BrainSuite/SVREG)
     elseif ~isempty(strfind(fBase, 'aseg')) || ~isempty(strfind(fBase, 'aparc')) % *aseg*.mgz
         AtlasName = 'freesurfer';
-    elseif ~isempty(strfind(fBase, '.svreg.label'))   % *.svreg.label.nii.gz
-        AtlasName = 'svreg';
+    elseif ~isempty(strfind(fBase, '.svreg.label')) || ...     % *.svreg.label.nii.gz
+           ~isempty(strfind(fBase, 'brainsuiteatlas1')) || ... % *brainsuiteatlas1.nii.gz
+           ~isempty(strfind(fBase, 'uscbrain')) || ...         % *uscbrain.nii.gz
+           ~isempty(strfind(fBase, 'bci-dni_brain'))           % *bci-dni_brain*.nii.gz
+        % Get SVREG atlas: BrainSuiteAtlas1, USCBrain, or BCI-DNI_brain_atlas
+        [fPath, fBase] = bst_fileparts(MriFile);
+        SvregLogFile = bst_fullfile(fPath, [regexprep(strrep(fBase, '.nii', ''), '\.label$', '') '.log']);
+        % Get BrainSuite atlas name from first line of the log file
+        if file_exist(SvregLogFile) && file_attrib(SvregLogFile, 'r')
+            fid = fopen(SvregLogFile,'r');
+            lines = textscan(fid, '%s', 'Delimiter', '\n');
+            fclose(fid);
+            AtlasName = regexp(lines{1}{1}, '[/\\]+svreg[/\\]+([^/\\]+)[/\\]+', 'tokens', 'once');
+            AtlasName = AtlasName{1};
+        else
+            AtlasName = 'svreg';
+        end
     elseif ~isempty(strfind(fBase, '_final_contr')) || ~isempty(strfind(fBase, 'final_tissues'))  % SimNIBS3/headreco  &  SimnNIBS4/charm
         AtlasName = 'simnibs';
     end
@@ -112,8 +136,10 @@ if isempty(Labels) && ~isempty(AtlasName)
             Labels = mri_getlabels_freesurfer();
         case 'marsatlas'     % BrainVISA MarsAtlas (Auzias 2006)
             Labels = mri_getlabels_marsatlas();
-        case 'svreg'         % BrainSuite SVREG (Brainsuite1, USCBrain)
+        case 'svreg'  % BrainSuite SVREG (BrainsuiteAtlas1)
             Labels = mri_getlabels_svreg();
+        case {'brainsuiteatlas1', 'uscbrain', 'bci-dni_brain_atlas'}
+            Labels = mri_getlabels_svreg(AtlasName);
         case 'tissues5'    % Basic head tissues
             Labels = {...
                     0, 'Background',    [  0,   0,   0]; ...

@@ -514,7 +514,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
     elseif ~isempty(eventNamePrefix)
         eventNamePrefix = [eventNamePrefix ' '];
     end
-    newEvents = struct();
+    newEvents = repmat(db_template('event'),0);
     DataMat = in_bst_data(rawFile);
     eventName = [eventNamePrefix GetSpikesEventPrefix() ' ' electrodeName];
     gotEvents = 0;
@@ -631,7 +631,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
             numEvents = length(DataMat.F.events);
         end
         % Add as new event(s);
-        if ~isempty(fieldnames(newEvents))
+        if ~isempty(newEvents)
             for iEvent = 1:length(newEvents)
                 DataMat.F.events(numEvents + iEvent) = newEvents(iEvent);
             end

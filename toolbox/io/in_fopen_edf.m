@@ -205,20 +205,40 @@ sFile.header = hdr;
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
 % No info on bad channels
 sFile.channelflag = ones(hdr.nsignal,1);
-% Acquisition date
-acq_date = datetime([ hdr.startdate, ' ', hdr.starttime], 'InputFormat','dd.MM.uu HH.mm.ss');
-
-% In the 'startdate', use 1985 as a clipping date in order to avoid the Y2K problem. 
-% So, the years 1985-1999 must be represented by yy=85-99 and the years 2000-2084 by yy=00-84. 
-% After 2084, yy must be 'yy' and only item 4 of this paragraph defines the date.
-if year(acq_date) >= 85
-    acq_date.Year = 1900 + year(acq_date);
-else
-    acq_date.Year = 2000 + year(acq_date);
+% Acquisition date from 'local recording identification'
+tmp = regexp(hdr.rec_id, 'Startdate ([\w|-]*)', 'tokens');
+rec_id_date = '';
+if ~isempty(tmp) && length(tmp) == 1
+    rec_id_date = str_date(tmp{1}{1});
 end
-
-acq_date.Format = 'yyyy-MM-dd''T''HH:mm:ss';
-sFile.acq_date = char(acq_date);
+% Acquisition date from 'startdate'
+try
+    acq_date = datetime(hdr.startdate, 'InputFormat','dd.MM.uu');
+catch
+    acq_date = [];
+end
+if ~isempty(acq_date)
+    % In the 'startdate', use 1985 as a clipping date in order to avoid the Y2K problem.
+    % Years between 1985-1999 must be represented by yy=85-99
+    if year(acq_date) >= 85
+        acq_date.Year = 1900 + year(acq_date);
+    % Years between 2000-2084 by yy=00-84
+    else
+        acq_date.Year = 2000 + year(acq_date);
+    end
+    % After 2084, yy must be 'yy' and only 'local recording identification' defines the date
+    if ~isempty(rec_id_date)
+        % EDF specs: English 3-character abbreviations of the month
+        rec_id_date = datetime(rec_id_date, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US');
+        if rec_id_date.Year >= 2085
+            acq_date.Year = rec_id_date.Year;
+        end
+    end
+    acq_date.Format = 'dd-MMM-yyyy';
+    sFile.acq_date = char(acq_date, '', 'en_US');
+    % Timestamp for 0s
+    sFile.t0 = str_datetime([sFile.acq_date, ' ', hdr.starttime]);
+end
 
 
 %% ===== PROCESS CHANNEL NAMES/TYPES =====

@@ -468,6 +468,8 @@ sFile.header       = hdr;
 sFile.comment = fBase;
 % Acquisition date
 sFile.acq_date = datestr(datenum([hdr.acquisition.year, hdr.acquisition.month, hdr.acquisition.day]), 'dd-mmm-yyyy');
+sFile.t0 = str_datetime(datetime(sFile.acq_date, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US') + ...
+                                 hours(hdr.acquisition.hour) + minutes(hdr.acquisition.min) + seconds(hdr.acquisition.sec));
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====

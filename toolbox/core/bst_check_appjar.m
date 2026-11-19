@@ -1,4 +1,4 @@
-function isLatest = bst_check_appjar()
+function isLatest = bst_check_appjar(BstJar)
 % BST_CHECK_APPJAR:  Check current brainstorm.jar is the lastest (equal to one in GitHub)
 
 % @=============================================================================
@@ -21,6 +21,11 @@ function isLatest = bst_check_appjar()
 %
 % Authors: Raymundo Cassani, 2025
 
+if nargin < 1 || isempty(BstJar)
+    [installDir, bstDir] = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));
+    BstJar = fullfile(installDir, bstDir, 'java', 'brainstorm.jar');
+end
+
 if ~bst_check_internet()
     disp(['BST> No internet connection.' 10 ...
           '     Latest version of "brainstorm.jar" could not be verified']);
@@ -28,10 +33,10 @@ if ~bst_check_internet()
     return
 end
 
-% Binary comparison of files
-BstJar   = fullfile(bst_get('BrainstormHomeDir'), 'java', 'brainstorm.jar');
-BstJarGH = fullfile(bst_get('BrainstormHomeDir'), 'java', 'brainstormGH.jar');
+% Download brainstorm.jar from GitHub
+BstJarGH =  file_unique(BstJar);
 bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJarGH);
+% Binary comparison of files
 fid1 = fopen(BstJar,   'rb');
 fid2 = fopen(BstJarGH, 'rb');
 data1 = fread(fid1, inf, '*uint8');

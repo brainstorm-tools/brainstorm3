@@ -372,15 +372,13 @@ function evt = Compute(F, TimeVector, EventSamps, OPTIONS, Fmask)
 
     % Standard deviation
     if ~isempty(Fmask)
-        Fsig = F(Fmask);
-        % ignore the first and last 5% of the signal (incase of artifacts)
-        Fsig = Fsig(length(Fsig)*0.05:end-(length(Fsig)*0.05));
-        stdF = std(Fsig);
+        Fsig = F(Fmask);        
     else
         Fsig = F;
-        Fsig = Fsig(length(Fsig)*0.05:end-(length(Fsig)*0.05));
-        stdF = std(Fsig);
     end
+    % Ignore the first and last 5% of the signal (incase of artifacts)
+    Fsig = Fsig(round(length(Fsig)*0.05):end-round(length(Fsig)*0.05));
+    stdF = std(Fsig);
     
     % ===== DETERMINE THRESHOLD =====
     % Theshold, in number of times the std

@@ -15,6 +15,7 @@ function varargout = figure_timeseries( varargin )
 %                figure_timeseries('ResetView',                   hFig)
 %                figure_timeseries('ResetViewLinked',             hFig)
 %                figure_timeseries('DisplayFigurePopup',          hFig, menuTitle=[], curTime=[])
+%                figure_timeseries('UpdateXAxisTimeLabels,        hFig, action=['update', 'toggle'])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -921,6 +922,7 @@ function FigureMouseWheelCallback(hFig, event)
     % Regular scroll
     else
         FigureScroll(hFig, event.VerticalScrollCount, 'horizontal');
+        UpdateXAxisTimeLabels(hFig, 'update');
     end
 end
 
@@ -1520,6 +1522,11 @@ function FigureKeyPressedCallback(hFig, ev)
         case 'v'           
             if isControl && isFullDataFile
                 panel_record('JumpToVideoTime', hFig);
+            end
+        % CTRL+X : Toogle time X axis mode
+        case 'x'
+            if isControl && isFullDataFile
+                UpdateXAxisTimeLabels(hFig, 'toggle')
             end
         % Y : Scale to fit Y axis
         case 'y'
@@ -2169,52 +2176,11 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
     jPopup = java_create('javax.swing.JPopupMenu');
     % Add wall clock time for continuous EDF files in the title of the popup
     dateTitle = '';
-    if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && isequal(GlobalData.DataSet(iDS).Measures.DataType, 'raw') && ~isempty(GlobalData.DataSet(iDS).Measures.sFile)
-        sFile = GlobalData.DataSet(iDS).Measures.sFile;
-        % EDF: Wall-clock time
-        if strcmpi(sFile.format, 'EEG-EDF') && isfield(sFile.header, 'startdate') && isfield(sFile.header, 'starttime') && ~isempty(sFile.header.startdate) && ~isempty(sFile.header.starttime)
-            % Read time and date from the fields in the header
-            recdate = sFile.header.startdate;
-            rectime = sFile.header.starttime;
-            recdate(~ismember(sFile.header.startdate, '1234567890')) = ' ';
-            rectime(~ismember(sFile.header.starttime, '1234567890')) = ' ';
-            recdate = str2num(recdate);
-            rectime = str2num(rectime);
-            % Valid times where found
-            if (length(recdate) == 3) && (length(rectime) == 3) && ~isequal(recdate, [1 1 1]) && ~isequal(recdate, [0 0 0])
-                dstart = datenum(2000 + recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
-                dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
-                dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-            end
-        % Nihon Kohden: Wall clock time
-        elseif strcmpi(sFile.format, 'EEG-NK') && isfield(sFile.header, 'startdate') && ~isempty(sFile.header.startdate)
-            % Read date from the fields in the header
-            recdate = sFile.header.startdate;
-            recdate(~ismember(sFile.header.startdate, '1234567890')) = ' ';
-            recdate = str2num(recdate);
-            % Get timestamp of the current data block
-            iEpoch = GlobalData.FullTimeWindow.CurrentEpoch;
-            ts = sFile.header.ctl(1).data(iEpoch).timestamp;
-            rectime(3) = rem(ts, 60);
-            rectime(2) = rem(ts - rectime(3), 3600) / 60;
-            rectime(1) = (ts - rectime(2)*60 - rectime(3)) / 3600;
-            % Valid times where found
-            if (length(recdate) == 3) && (length(rectime) == 3) && ~isequal(recdate, [1 1 1]) && ~isequal(recdate, [0 0 0])
-                dstart = datenum(recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
-                dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
-                dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-            end
-        % Spike2 SMR: Wall clock time
-        elseif strcmpi(sFile.format, 'EEG-SMRX') && isfield(sFile.header, 'timedate')
-            t = sFile.header.timedate;
-            dateTitle = [datestr(datenum(t(7), t(6), t(5), t(4), t(3), t(2)), 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-        % Micromed TRC: Wall clock time
-        elseif strcmpi(sFile.format, 'EEG-MICROMED') && isfield(sFile.header, 'acquisition') && isfield(sFile.header.acquisition, 'sec')
-            acq = sFile.header.acquisition;
-            dstart = datenum(acq.year, acq.month, acq.day, acq.hour, acq.min, acq.sec);
-            dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
-            dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-        end
+    if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && ~isempty(GlobalData.DataSet(iDS).Measures.sFile) && ...
+            isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') && ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
+        currentTs = datetime(GlobalData.DataSet(iDS).Measures.sFile.t0) + seconds(GlobalData.UserTimeWindow.CurrentTime);
+        currentTs.Format = 'dd-MMM-yyyy HH:mm:ss.SSS';
+        dateTitle = char(currentTs, '', 'en_US');
     end
     % Menu title
     if ~isempty(menuTitle) || ~isempty(dateTitle)
@@ -2502,6 +2468,7 @@ function DisplayConfigMenu(hFig, jParent)
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+    isT0 = ~isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') || ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0);
     isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     % Get all other figures
     hFigAll = bst_figures('GetFiguresByType', FigureId.Type);
@@ -2539,18 +2506,34 @@ function DisplayConfigMenu(hFig, jParent)
         end
 
     % === X-AXIS ===
-    if isRaw || strcmpi(FigureId.Type, 'Spectrum')
+    if isRaw || isT0 || strcmpi(FigureId.Type, 'Spectrum')
         % Menu name
         if strcmpi(FigureId.Type, 'Spectrum')
             strX = 'Frequency';
         else
             strX = 'Time';
         end
+        % Time axis options
         jMenu = gui_component('Menu', jPopup, [], strX, IconLoader.ICON_X);
-        % Axis resolution
         if strcmpi(FigureId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+            % Axis resolution
+            if isRaw
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+            end
+            if isRaw && isT0
+                jMenu.addSeparator();
+            end
+            % Time display mode
+            if isT0
+                if isempty(TsInfo.TimestampZero)
+                    strTime = 'Display time as absolute time (HH:MM:ss)';
+                else
+                    strTime = 'Display time as relative time';
+                end
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], strTime, IconLoader.ICON_LOADING, [], @(h,ev)UpdateXAxisTimeLabels(hFig, 'toggle'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, KeyEvent.CTRL_MASK));
+            end
         end
         % Log scale
         if strcmpi(FigureId.Type, 'Spectrum')
@@ -2588,7 +2571,7 @@ function DisplayConfigMenu(hFig, jParent)
             % Set fixed resolution
             if isRaw
                 jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK));
             end
             % Uniform amplitude scales
             if ~isRaw && (length(hFigAll) > 1)
@@ -3157,6 +3140,10 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
             PlotRawTimeBar(iDS, iFig);
         end
     end
+
+    % ===== UPDATE X AXIS TIME DISPLAY =====
+    UpdateXAxisTimeLabels(hFig, 'update');
+
     % ===== SCALE BAR =====
     % For column displays: add a scale display
     if ~TsInfo.NormalizeAmp && strcmpi(TsInfo.DisplayMode, 'column') && (nAxes == 1)
@@ -3995,16 +3982,16 @@ function CreateScaleButtons(iDS, iFig)
     TsInfo = getappdata(hFig, 'TsInfo');
     % Create buttons
     h1  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_LEFT, ...
-        '<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>', ...
+        '<HTML>Horizontal zoom out<BR><BR><B> &nbsp; [MOUSE WHEEL]</B>', ...
         @(h,ev)FigureZoomLinked(hFig, 'horizontal', .9091), 'ButtonZoomTimeMinus');
     h2  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_RIGHT, ...
-        '<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcut: [MOUSE WHEEL]</TD></TR></TABLE>', ...
+        '<HTML>Horizontal zoom in<BR><BR><B> &nbsp; [MOUSE WHEEL]</B>', ...
         @(h,ev)FigureZoomLinked(hFig, 'horizontal', 1.1), 'ButtonZoomTimePlus');
     h3  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_MINUS, ...
-        '<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B></TD></TR></TABLE>', ...
+        '<HTML>Decrease gain<BR><BR><B> &nbsp; [-]<BR> &nbsp; [Right-click + Mouse down]</B>', ...
         @(h,ev)UpdateTimeSeriesFactor(hFig, .9091), 'ButtonGainMinus');
     h4  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_PLUS, ...
-        '<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B></TD></TR></TABLE>', ...
+        '<HTML>Increase gain<BR><BR><B> &nbsp; [+]<BR> &nbsp; [Right-click + Mouse up]</B>', ...
         @(h,ev)UpdateTimeSeriesFactor(hFig, 1.1), 'ButtonGainPlus');
     h5  = bst_javacomponent(hFig, 'toggle', [], 'AS', [], ...
         'Auto-scale amplitude when changing page', ...
@@ -4012,16 +3999,16 @@ function CreateScaleButtons(iDS, iFig)
     h6  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_MENU_LEFT_TS, ...
         'Display configuration', @(h,ev)DisplayConfigMenu(hFig, ev), 'ButtonMenu');
     h7  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_UP, ...
-        '<HTML><TABLE><TR><TD>Scroll up</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse up]<BR> &nbsp; [Middle click + Mouse up]</B></TD></TR></TABLE>', ...
+        '<HTML>Scroll up<BR><BR><B> &nbsp; [Right+left click + Mouse up]<BR> &nbsp; [Middle click + Mouse up]</B>', ...
         @(h,ev)FigurePan(hFig, [0, -.9]), 'ButtonZoomUp');
     h8  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_ZOOM_PLUS, ...
-        '<HTML><TABLE><TR><TD>Vertical zoom in</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>', ...
+        '<HTML>Vertical zoom in<BR><BR><B> &nbsp; [CTRL + MOUSE WHEEL]</B>', ...
         @(h,ev)FigureZoom(hFig, 'vertical', 1.3, 0), 'ButtonZoomPlus');
     h9  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_ZOOM_MINUS, ...
-        '<HTML><TABLE><TR><TD>Vertical zoom out</TD></TR><TR><TD><B> &nbsp; [CTRL + MOUSE WHEEL]</B></TD></TR></TABLE>', ...
+        '<HTML>Vertical zoom out<BR><BR><B> &nbsp; [CTRL + MOUSE WHEEL]</B>', ...
         @(h,ev)FigureZoom(hFig, 'vertical', .7692, 0), 'ButtonZoomMinus');
     h10 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_DOWN, ...
-        '<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>', ...
+        '<HTML>Scroll down<BR><BR><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B>', ...
         @(h,ev)FigurePan(hFig, [0, .9]), 'ButtonZoomDown');
     % Flip Y axis
     if TsInfo.FlipYAxis
@@ -4312,6 +4299,65 @@ function SetResolution(iDS, iFig, newResX, newResY)
     % Save modifications in user preferences
     if ~isequal(Resolution, oldResolution)
         bst_set('Resolution', Resolution);
+    end
+end
+
+
+%% ===== UPDATE X AXIS TIME DISPLAY =====
+function UpdateXAxisTimeLabels(hFig, action)
+    global GlobalData;
+
+    if nargin < 2 || isempty(action)
+        action = 'update';
+    end
+
+    % Get current figure structure
+    [hFig, ~, iDS] = bst_figures('GetFigure', hFig);
+    hAxes = findobj(hFig, 'Tag', 'AxesGraph');
+    TsInfo = getappdata(hFig, 'TsInfo');
+    FigureId = getappdata(hFig, 'FigureId');
+    % Just for DataTimeseries with t0
+    if ~strcmpi(FigureId.Type, 'DataTimeSeries') || ...
+       ~isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') || ...
+       isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
+        return
+    end
+
+    % Update TimestampZero in Figure TsInfo data
+    if strcmpi(action, 'update') && ~isempty(TsInfo.TimestampZero) && ~strcmpi(TsInfo.TimestampZero, GlobalData.DataSet(iDS).Measures.sFile.t0)
+        TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
+        setappdata(hFig, 'TsInfo', TsInfo);
+    elseif strcmpi(action, 'toggle')
+        if isempty(TsInfo.TimestampZero)
+            TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
+        else
+            TsInfo.TimestampZero = [];
+        end
+        setappdata(hFig, 'TsInfo', TsInfo);
+    end
+
+    % Reset to default tick mode (relative time)
+    set(hAxes, 'XTickMode', 'auto', 'XTickLabelMode', 'auto');
+    % Display as relative time (from the recording start)
+    if isempty(TsInfo.TimestampZero)
+        % Do nothing
+    % Display as absolute time [yyyy-MM-ddT]HH:mm:ss.SSS
+    else
+        % Get tick values and current labels
+        tickValues = hAxes.XTick;
+        tickLabels = get(hAxes, 'xTickLabel');
+        tickTimeStamps = datetime(TsInfo.TimestampZero) + seconds(tickValues);
+        % Find number of decimals for seconds from tickLabels
+        tmp = regexp(tickLabels, '\.(\d*)$', 'tokens');
+        tmp = [tmp{:}];
+        d = max([cellfun(@(x) length(x{1}), tmp),0]);
+        tickFormat = 'HH:mm:ss';
+        if d > 0
+            tickFormat = [tickFormat, '.' repmat('S', 1, d)];
+        end
+        tickTimeStamps.Format = tickFormat;
+        tickLabels = arrayfun(@char, tickTimeStamps, 'UniformOutput', 0);
+        hAxes.XTickLabel = tickLabels;
     end
 end
 
@@ -4608,11 +4654,11 @@ function PlotRawTimeBar(iDS, iFig)
             end
             % Tooltips: Different shortcuts on MacOS
             if strncmp(computer,'MAC',3)
-                tooltipNext = '<HTML><TABLE><TR><TD>Next page</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [Fn+F4]</B> : Half page</TD></TR></TABLE>';
-                tooltipPrev = '<HTML><TABLE><TR><TD>Previous page</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+Fn+F3]</B></TD></TR> <TR><TD>Slower data scrolling:<BR><B> - [SHIFT+Fn+F4]</B> : Half page</TD></TR></TABLE>';
+                tooltipNext = '<HTML>Next page<BR><BR>Related shortcuts:<BR><B> &nbsp; [CTRL+SHIFT+ARROW LEFT]<BR> &nbsp; [SHIFT+ARROW DOWN]<BR> &nbsp; [SHIFT+Fn+F3]</B><BR><BR>Other scrolling options:<BR><B> &nbsp; [SHIFT+Fn+F4]</B> : Half page<BR><B> &nbsp; [SHIFT+Fn+F6]</B> : Full page with no overlap<BR><B> &nbsp; [CTRL+Fn+ARROW DOWN]</B>: -10 pages';
+                tooltipPrev = '<HTML>Previous page<BR><BR>Related shortcuts:<BR><B> &nbsp; [CTRL+SHIFT+ARROW RIGHT]<BR> &nbsp; [SHIFT+ARROW UP]<BR> &nbsp; [Fn+F3]</B><BR><BR>Other scrolling options:<BR><B> &nbsp; [Fn+F4]</B> : Half page<BR><B> &nbsp; [Fn+F6]</B> : Full page with no overlap<BR><B> &nbsp; [CTRL+FN+ARROW UP]</B>: +10 pages';
             else
-                tooltipNext = '<HTML><TABLE><TR><TD>Next page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [F4]</B> : Half page<BR><B> - [F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE UP]</B>: +10 pages</TD></TR></TABLE>';
-                tooltipPrev = '<HTML><TABLE><TR><TD>Previous page</TD></TR> <TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+F4]</B> : Half page<BR><B> - [SHIFT+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>'; 
+                tooltipNext = '<HTML>Next page<BR><BR>Related shortcuts:<BR><B> &nbsp; [CTRL+ARROW RIGHT]<BR> &nbsp; [SHIFT+ARROW UP]<BR> &nbsp; [F3]</B><BR><BR>Other scrolling options:<BR><B> &nbsp; [F4]</B> : Half page<BR><B> &nbsp; [F6]</B> : Full page with no overlap<BR><B> &nbsp; [CTRL+PAGE UP]</B>: +10 pages';
+                tooltipPrev = '<HTML>Previous page<BR><BR>Related shortcuts:<BR><B> &nbsp; [CTRL+ARROW LEFT]<BR> &nbsp; [SHIFT+ARROW DOWN]<BR> &nbsp; [SHIFT+F3]</B><BR><BR>Other scrolling options:<BR><B> &nbsp; [SHIFT+F4]</B> : Half page<BR><B> &nbsp; [SHIFT+F6]</B> : Full page with no overlap<BR><B> &nbsp; [CTRL+PAGE DOWN]</B>: -10 pages';
             end
             % Create buttons
             bst_javacomponent(hFig, 'button', [], '>>>', [], tooltipNext, ...
@@ -4700,12 +4746,14 @@ function PlotEventsDots_TimeBar(hFig)
     cla(hRawTimeBar);
     % Get the raw events and time axes
     events = panel_record('GetEvents');
+    if isempty(events)
+        return;
+    end
+    % Select only non-hidden events
+    events = events([events.select] == 1);
+
     % Loop on all the events types
     for iEvt = 1:length(events)
-        % If event is hidden
-        if isequal(events(iEvt).select, 0)
-            continue;
-        end
         % No occurrences: nothing to draw
         nOccur = size(events(iEvt).times, 2);
         if (nOccur == 0)

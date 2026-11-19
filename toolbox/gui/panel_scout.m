@@ -5536,19 +5536,10 @@ function LoadScouts(ScoutFiles, isNewAtlas, FileFormat)
     end
     
     % ===== VOLUME GRIDS =====
-    GridLoc = [];
     % Get selected figure
     hFig = bst_figures('GetCurrentFigure', '3D');
     if ~isempty(hFig)
-        % Get ResultsFile and Surface
-        ResultsFile = getappdata(hFig, 'ResultsFile');
-        if ~isempty(ResultsFile)
-            % Load results file
-            [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-            if strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'volume')
-                GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-            end
-        end
+        GridLoc = GetFigureGrid(hFig);
     end   
     
     % Load all files selected by user
@@ -5575,93 +5566,18 @@ function SaveScouts(varargin)
         return;
     end
     % Get selected scouts (no selection: export all the scouts)
-    [sScouts, iScouts, sSurf] = GetSelectedScouts();
+    [~, iScouts, sSurf] = GetSelectedScouts();
     if ~isempty(iScouts)
         sAtlas.Scouts = sAtlas.Scouts(iScouts);
     end
     % Remove the file "Handles"
-    %sAtlas.Scouts = rmfield(sAtlas.Scouts, 'Handles');
     for is = 1:length(sAtlas.Scouts)
         sAtlas.Scouts(is).Handles = [];
     end
     % Prepare structure for saving
     sAtlas.TessNbVertices = length(sSurf.Vertices);
-    
-    % Build a default file name
-    LastUsedDirs = bst_get('LastUsedDirs');
-    if strcmpi(sAtlas.Name, 'User scouts')
-        if (length(sScouts) <= 3)
-            ScoutFile = bst_fullfile(LastUsedDirs.ExportAnat, ['scout', sprintf('_%s', sScouts.Label), '.mat']);
-        else
-            ScoutFile = bst_fullfile(LastUsedDirs.ExportAnat, sprintf('scout_%d.mat', length(sAtlas.Scouts)));
-        end
-    else
-        ScoutFile = bst_fullfile(LastUsedDirs.ExportAnat, ['scout_', file_standardize(sAtlas.Name), sprintf('_%d.mat', length(sAtlas.Scouts))]);
-    end
-    % Get filename where to store the filename
-    [ScoutFile, FileFormat] = java_getfile('save', 'Save selected scouts', ScoutFile, ... 
-                             'single', 'files', ...
-                             {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'; ...
-                              {'.label'}, 'FreeSurfer ROI, single scout (*.label)', 'FS-LABEL-SINGLE'; ...
-                              {'.annot'}, 'FreeSurfer annotation, multiple scouts (*.annot)', 'FS-ANNOT'}, 1);
-    if isempty(ScoutFile)
-        return;
-    end
-    % Save last used folder
-    LastUsedDirs.ExportAnat = bst_fileparts(ScoutFile);
-    bst_set('LastUsedDirs',  LastUsedDirs);
-    % Switch file format
-    switch (FileFormat)
-        case 'BST'
-            % Make sure that filename contains the 'scout' tag
-            if isempty(strfind(ScoutFile, '_scout')) && isempty(strfind(ScoutFile, 'scout_'))
-                [filePath, fileBase, fileExt] = bst_fileparts(ScoutFile);
-                ScoutFile = bst_fullfile(filePath, ['scout_' fileBase fileExt]);
-            end
-            % Save file
-            bst_save(ScoutFile, sAtlas, 'v7');
-        case 'FS-LABEL-SINGLE'
-            if length(sScouts) == 1
-                out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
-            else
-                bst_error('FreeSurfer label file can only store a single scout. Please export each scout separatly');
-                return;
-            end
-        case 'FS-ANNOT'
-            vertices = [];
-            label = [];
-            ct = struct();
-            ct.numEntries   = length(sScouts);
-            ct.orig_tab     = sAtlas.Name;
-            ct.struct_names = {sScouts.Label};
-            ct.table = zeros(length(sScouts),5);
-
-            % Make Scout colors unique, they need to be RGB with 0-255 range
-            scoutColors = MakeColorsUnique(round(cat(1, sScouts.Color) * 255));
-            for iScout = 1 : length(sScouts)
-                sScouts(iScout).Color = scoutColors(iScout, :);
-            end
-            % Generate table with Scouts info
-            for iScout = 1:length(sScouts)
-                ct.table(iScout,1:3) = sScouts(iScout).Color;
-                ct.table(iScout,5)   = ct.table(iScout,1) + ct.table(iScout,2) *2^8 + ct.table(iScout,3) *2^16;
-                vertices = [vertices, sScouts(iScout).Vertices];
-                label    = [label,  repmat(ct.table(iScout,5), 1, length(sScouts(iScout).Vertices))];
-            end
-            % A label for each vertex is needed, orphan vertices set as 'background'
-            orphanVertices = setdiff(1:size(sSurf.Vertices,1), vertices);
-            if ~isempty(orphanVertices)
-                ct.numEntries          = ct.numEntries + 1;
-                ct.struct_names{end+1} = 'background';
-                ct.table(end+1, :)     = zeros(1,5);
-                ct.table(end,1:3)      = [0 0 0];
-                ct.table(end,5)        = ct.table(end,1) + ct.table(end,2) *2^8 + ct.table(end,3) *2^16;
-                vertices = [vertices, orphanVertices];
-                label    = [label,  repmat(ct.table(end,5), 1, length(orphanVertices))];
-            end
-            vertices = vertices-1; % 0-indexed
-            write_annotation(ScoutFile, vertices, label, ct)
-    end
+    % Export atlas
+    export_label(sSurf, sAtlas);
 end
 
 

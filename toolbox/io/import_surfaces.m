@@ -78,7 +78,7 @@ ProtocolInfo = bst_get('ProtocolInfo');
 sSubject = bst_get('Subject', iSubject);
 subjectSubDir = bst_fileparts(sSubject.FileName);
 % Check the presence of the MRI: warning if no MRI
-if isempty(sSubject.Anatomy)
+if isempty(sSubject.Anatomy) && isApplyMriOrient ~= 0
     res = java_dialog('confirm', ...
         ['WARNING: To import correctly surface files, the subject''s MRI is needed.' 10 10 ...
         'Import subject''s MRI now?' 10 10], 'Import surfaces');

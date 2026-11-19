@@ -124,6 +124,7 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
 %% ===== SEARCH BUTTON =====
     function ButtonSearch_Callback(varargin)
         bst_mutex('release', panelName); % Release the MUTEX
+        gui_release_dialog(panelName);
     end
 
 %% ===== PIPELINE BUTTON =====

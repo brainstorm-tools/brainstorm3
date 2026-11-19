@@ -176,7 +176,7 @@ bst_mutex('waitfor', 'ReleaseNotes');
 % === RESET ENVIRONMENT ===
 % Delete the brainstorm.jar if outdated to force downloading a new one when Brainstorm restarts
 jarFile = fullfile(installDir, bstDir, 'java', 'brainstorm.jar');
-if exist(jarFile, 'file') && (bst_check_appjar() == 0)
+if exist(jarFile, 'file') && (bst_check_appjar(jarFile) == 0)
     delete(jarFile);
     % The brainstorm.jar file could not be deleted because it was still in use: delete it at next startup
     if exist(jarFile, 'file')

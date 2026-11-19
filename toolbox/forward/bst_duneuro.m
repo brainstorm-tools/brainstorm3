@@ -31,7 +31,7 @@ Gain = [];
 if ~isInstalled
     return;
 end
-bst_plugin('SetProgressLogo', 'duneuro');
+bst_progress('setpluginlogo', 'duneuro');
 % Get DUNEuro executable
 DuneuroExe = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'bin', ['bst_duneuro_meeg_', bst_get('OsType')]);
 if ispc
@@ -610,7 +610,7 @@ file_delete(TmpDir, 1, 1);
 disp('DUNEURO> TODO: Save transferOut.dat to database.')
 
 % Remove logo
-bst_plugin('SetProgressLogo', []);
+bst_progress('removeimage');
 
 end
 

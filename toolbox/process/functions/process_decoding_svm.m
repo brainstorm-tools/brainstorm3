@@ -112,7 +112,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, [], errMsg);
             return;
         end
-        bst_plugin('SetProgressLogo', 'libsvm');
+        bst_progress('setpluginlogo', 'libsvm');
     end
     % Check for the Signal Processing toolbox
     if LowPass > 0 && ~bst_get('UseSigProcToolbox')
@@ -136,21 +136,23 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     if strcmpi(method, 'pairwise')
         methodName = 'Pairwise';
-        Description = cell(numConditions * (numConditions - 1) / 2, 1);
-        iDesc = 1;
-        for iCond1 = 1:numConditions
-            for iCond2 = iCond1+1:numConditions
-                Description{iDesc} = [uniqueConditions{iCond2} ' vs ' uniqueConditions{iCond1}];
-                iDesc = iDesc + 1;
-            end
-        end
     elseif strcmpi(method, 'temporalgen')
         methodName = 'Temporal generalization';
-        Description = 'Average accuracy';
     else
         bst_report('Error', sProcess, [], ['Decoding using the ' method ' method is not yet supported.']);
         return;
     end
+    % Description
+    Description = cell(numConditions * (numConditions - 1) / 2, 1);
+    iDesc = 1;
+    for iCond1 = 1:numConditions
+        for iCond2 = iCond1+1:numConditions
+            Description{iDesc} = [uniqueConditions{iCond2} ' vs ' uniqueConditions{iCond1}];
+            iDesc = iDesc + 1;
+        end
+    end
+    % Units
+    DisplayUnits = 'Decoding accuracy (%)';
     % Channel files for all inputs  must have the same list of channels
     uniqueChannelFiles = unique({sInputs.ChannelFile});
     channelMatRef = in_bst_channel(uniqueChannelFiles{1});
@@ -217,6 +219,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     FileMat.Description = Description;
     FileMat.Time        = Time;
     FileMat.CondLabels  = uniqueConditions;
+    FileMat.DisplayUnits = DisplayUnits;
     FileMat = bst_history('add',  FileMat,  'SVM', ['Channels: ' strVars]);
 
     % ===== OUTPUT CONDITION =====
@@ -239,7 +242,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Register in database
     db_add_data(iStudy, OutputFiles{1}, FileMat);
     % Remove logo
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
 end
 
 

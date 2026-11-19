@@ -17,6 +17,7 @@ function pBar = bst_progress(varargin)
 %         pBar = bst_progress('removelink')          : Remove click-on-image action
 %   pBarParams = bst_progress('getbarparams')        : Get current bar parameters
 %         pBar = bst_progress('setbarparams', pBarParams) : Set bar parameters
+%         pBar = bst_progress('setpluginlogo', plugName/plugDesc) : display plugin logo with click-on image link
 
 % NOTES : The window is created once, and then never deleted, just hidden.
 %         Progress bar is represented by a structure: 
@@ -343,8 +344,13 @@ switch (lower(commandName))
     case 'setimage'
         % Get image path
         imagefile = varargin{2};
-        if ~file_exist(imagefile)
-            imagefile = bst_fullfile(bst_get('BrainstormDocDir'), imagefile);
+        searchDirs = {'', bst_get('BrainstormDocDir'), bst_fullfile(bst_get('BrainstormDocDir'), 'plugins')};
+        for iDir = 1 : length(searchDirs)
+            tmp = bst_fullfile(searchDirs{iDir}, imagefile);
+            if file_exist(tmp)
+                imagefile = tmp;
+                break
+            end
         end
         if ~file_exist(imagefile)
             warning(['Image not found: ' imagefile]);
@@ -403,6 +409,44 @@ switch (lower(commandName))
         else
             bst_progress('start', pBarParams.Title, pBarParams.Msg, pBarParams.Min, pBarParams.Max);
             bst_progress('set', pBarParams.Value);
+        end
+
+    % ==== SET PLUGIN LOGO ====
+    case 'setpluginlogo'
+        % PlugName/PlugDesc is required
+        if (nargin < 2)
+            return
+        else
+            % Get plugin descriptor
+            PlugDesc = varargin{2};
+            if ischar(PlugDesc)
+                PlugDesc = bst_plugin('GetSupported', PlugDesc);
+            end
+            if isempty(PlugDesc)
+                return
+            end
+        end
+        % Get logo if not defined in the plugin structure
+        if isempty(PlugDesc.LogoFile)
+            PlugDesc.LogoFile = bst_plugin('GetLogoFile', PlugDesc);
+        end
+        % Start progress bar if needed
+        if ~pBar.jWindow.isVisible()
+            bst_progress('Start', ['Plugin: ' PlugDesc.Name], '');
+        end
+        % Set logo file
+        if ~isempty(PlugDesc.LogoFile)
+        % Image in label
+            pBar.jImage.setIcon(javax.swing.ImageIcon(PlugDesc.LogoFile));
+            GlobalData.Program.ProgressBar.isImage = 1;
+            % Extend size of the frame
+            UpdateConstraints(1);
+            pBar.jWindow.setPreferredSize([]);
+            pBar.jWindow.pack();
+        end
+        % Set link
+        if ~isempty(PlugDesc.URLinfo)
+            java_setcb(pBar.jImage, 'MouseClickedCallback', @(h,ev)web(PlugDesc.URLinfo, '-browser'));
         end
 
     otherwise

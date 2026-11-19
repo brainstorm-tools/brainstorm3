@@ -1,10 +1,12 @@
-function Labels = in_label_simnibs(LabelsFile)
-% IN_LABEL_SIMNIBS: Import list of anatomical labels from a SimNIBS _LUT.txt file
+function gui_release_dialog(panelName)
+% GUI_RELEASE_DIALOG: Release (by set isVisible to 0) a blocking modal JDialog
+% 
+% USAGE: gui_release_dialog(contName)
+
+% INPUT: 
+%     - panelName : Panel name, name of the Panel with the modal JDialog
 %
-% FILE FORMAT: Text file with one header line, followed by one line per ROI, with random sequences of separators (tabs and spaces)
-%    #No.	  Label Name:			   R   G   B   A
-%    2	  Left-Cerebral-White-Matter       245 245 245 255 
-%    3	  Left-Cerebral-Cortex     	   205 62 78 255 
+% SEE ALSO gui_hide gui_show gui_show_dialog
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,26 +26,26 @@ function Labels = in_label_simnibs(LabelsFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2023
+% Authors: Raymundo Cassani, 2026
 
-% Initialize returned variable
-Labels = [];
-
-% Open file
-fid = fopen(LabelsFile, 'r');
-if (fid < 0)
-    error('CTF> Cannot open file.');
+% Headless mode: exit
+global GlobalData;
+if (GlobalData.Program.GuiLevel == -1)
+    return
 end
-% Skip header line
-fgetl(fid);
-% Store everything in a cell array of string
-txtCell = textscan(fid,'%d %s %d %d %d %d');
-% Close file
-fclose(fid);
 
-% Copy ID, NAME, COLOR
-Labels = cell(size(txtCell{1},1),3);
-Labels(:,1) = num2cell(double(txtCell{1}));
-Labels(:,2) = txtCell{2};
-Labels(:,3) = num2cell(double([txtCell{3}, txtCell{4}, txtCell{5}]), 2);
+% No valid argument
+if nargin < 1 || isempty(panelName) || ~ischar(panelName)
+    return
+end
 
+% Get panel
+bstPanel = bst_get('Panel', panelName);
+if ~isempty(bstPanel)
+    jContainer = get(bstPanel, 'container');
+    % Check that container is modal JDialog
+    if ~isempty(jContainer) && strcmpi(jContainer.type, 'JavaWindow') && ...
+            isa(jContainer.handle{1}, 'javax.swing.JDialog') && jContainer.handle{1}.isModal()
+        java_call(jContainer.handle{1}, 'setVisible', 'Z', 0);
+    end
+end

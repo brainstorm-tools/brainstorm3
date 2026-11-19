@@ -121,6 +121,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jCheckMethodSEEG.setSelected(1);
         % Combobox
         jComboMethodSEEG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
+        jComboMethodSEEG.addItem(BstListItem('homogeneous', '', 'Homogeneous medium', []));
         jComboMethodSEEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
         jComboMethodSEEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodSEEG.setSelectedIndex(0);
@@ -185,6 +186,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
     function ButtonOk_Callback(varargin)
         % Release mutex and keep the panel opened
         bst_mutex('release', panelName);
+        gui_release_dialog(panelName);
     end
 
     %% ===== UPDATE COMMENT =====
@@ -201,9 +203,9 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         elseif isNirs && ~isMeg && ~isEeg && ~isEcog && ~isSeeg
             jCheckMethodNIRS.setSelected(1);
         end
-        % Disable NIRS for other than surface head model
+        % Disable NIRS for mixed head model
         if isNirs
-            if jRadioGridVolume.isSelected() || jRadioGridMixed.isSelected()
+            if jRadioGridMixed.isSelected()
                 jCheckMethodNIRS.setSelected(0);
                 jCheckMethodNIRS.setEnabled(0);
             else
@@ -437,6 +439,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         sMethod.Comment = strrep(sMethod.Comment, 'os_meg',          'Overlapping spheres');
         sMethod.Comment = strrep(sMethod.Comment, 'meg_sphere',      'Single sphere');
         sMethod.Comment = strrep(sMethod.Comment, 'eeg_3sphereberg', '3-shell sphere');
+        sMethod.Comment = strrep(sMethod.Comment, 'homogeneous',     'Homogeneous medium');
         sMethod.Comment = strrep(sMethod.Comment, 'openmeeg',        'OpenMEEG BEM');
         sMethod.Comment = strrep(sMethod.Comment, 'duneuro',         'DUNEuro FEM');
         % Grid type
@@ -446,6 +449,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             sMethod.Comment = [sMethod.Comment ' (mixed)'];
         end
     end
+    isHomogeneous = any(strcmpi(allMethods, 'homogeneous'));
     isOpenMEEG = any(strcmpi(allMethods, 'openmeeg'));
     isDuneuro = any(strcmpi(allMethods, 'duneuro'));
     % Get protocol description
@@ -596,6 +600,38 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         else
             bst_error('Please import a cortex surface for this subject.', 'Head model', 0);
             return
+        end
+
+        % ===== INFINITE HOMOGENEOUS MEDIUM =====
+        if isHomogeneous
+            % Interactive interface to set the options
+            if OPTIONS.Interactive
+                OPTIONS.Conductivity = [];
+                OPTIONS.MinSeegDipoleDist  = [];
+                % Get options
+                optionsStr = {'Brain conductivity (S/m):','Minimum distance between SEEG and dipoles (mm):'};
+                res = java_dialog('input', optionsStr, 'SEEG head model options', [],  {'0.25','3'});
+                if isempty(res)
+                    return
+                end
+                resDouble = str2double(res);
+                % Validate inputs
+                for iRes = 1 : length(resDouble)
+                    if isnan(resDouble(iRes))
+                        errMessage = sprintf('Invalid input "%s" for option:\n%s', res{iRes}, optionsStr{iRes});
+                        return
+                    end
+                end
+                OPTIONS.Conductivity      = resDouble(1);
+                OPTIONS.MinSeegDipoleDist = resDouble(2)/1000;
+            end
+            % Check that inner skull exists
+            if ~isempty(sSubject.iInnerSkull)
+                OPTIONS.InnerSkullFile = file_fullpath(sSubject.Surface(sSubject.iInnerSkull(1)).FileName);
+            else
+                errMessage = 'No inner skull surface for this subject.';
+                return
+            end
         end
                 
         % ===== OPENMEEG =====

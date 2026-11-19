@@ -83,6 +83,8 @@ sFile.prop.sfreq   = double(header.gSetUp.sample_rate);
 sFile.prop.times   = ([0, header.gSetUp.no_samples - 1] - header.gSetUp.preTrigPts) ./ header.gSetUp.sample_rate;
 % Acquisition date
 sFile.acq_date = str_date(header.res4.data_date);
+% Timestamp for 0s
+sFile.t0 = str_datetime([sFile.acq_date, ' ', deblank(header.res4.data_time)]);
 
 % Get number of epochs
 nEpochs = header.gSetUp.no_trials;

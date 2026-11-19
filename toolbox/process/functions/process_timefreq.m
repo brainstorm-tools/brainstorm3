@@ -327,7 +327,11 @@ end
 
 
 %% ===== GET EDGE EFFECT MASK =====
-function TFmask = GetEdgeEffectMask(Time, Freqs, tfOptions) %#ok<DEFNU>
+function [TFmask, transient] = GetEdgeEffectMask(Time, Freqs, tfOptions) %#ok<DEFNU>
+    % Get TimeFreq Method from bst_connectivity OPTIONS
+    if isfield(tfOptions, 'tfMeasure')
+        tfOptions.Method = tfOptions.tfMeasure;
+    end
     % Get time vector
     if ~iscell(Time)
         t = Time;
@@ -340,20 +344,26 @@ function TFmask = GetEdgeEffectMask(Time, Freqs, tfOptions) %#ok<DEFNU>
     else
         FreqBands = process_tf_bands('GetBounds', Freqs);
         f = mean(FreqBands, 2)';
+        if strcmpi(tfOptions.Method, 'morlet')
+            f = FreqBands(:,1)';
+        end
     end
     
+    TFmask = [];
+    transient = [];
     % Morlet wavelets
     if isfield(tfOptions, 'Method') && strcmpi(tfOptions.Method, 'morlet') && isfield(tfOptions, 'MorletFc') && isfield(tfOptions, 'MorletFwhmTc')
-        FWHM_t = tfOptions.MorletFwhmTc * tfOptions.MorletFc ./ f;
-        TF_timeres = repmat(FWHM_t' ./ 2, [1,length(t)]);
+        % For a FWHM_t = 3 and MorletFc = 1,  2.32-s equivalent to 99% of the impulse response energy of the wavelet filter (real part of the complex Morlet wavelet)
+        E99_t =  2.32 * (tfOptions.MorletFwhmTc / 3) * tfOptions.MorletFc ./ f;
+        TF_timeres = repmat(E99_t(:), [1,length(t)]);
         TFmask = (bst_bsxfun(@minus, t - t(1), TF_timeres) > 0);
         TFmask = (TFmask & bst_flip(TFmask, 2));
+        transient = E99_t;
   
     % Hilbert transform
     elseif isfield(tfOptions, 'Method') && strcmpi(tfOptions.Method, 'hilbert')
         if iscell(Time)
             disp('BST> Edge effects map for Hilbert process is not available yet when time bands are selected.');
-            TFmask = [];
         else
             % Sampling frequency
             sfreq = 1 ./ (t(2) - t(1));
@@ -364,10 +374,9 @@ function TFmask = GetEdgeEffectMask(Time, Freqs, tfOptions) %#ok<DEFNU>
                 [tmp, FiltSpec] = process_bandpass('Compute', [], sfreq, FreqBands(i,1), FreqBands(i,2), 'bst-hfilter-2019');
                 % Only the values outside of the transients are valid
                 TFmask(i,(t - t(1) > FiltSpec.transient) & (t(end) - t > FiltSpec.transient)) = 1;
+                transient(i) = FiltSpec.transient;
             end
         end
-    else
-        TFmask = [];
     end
 end
 

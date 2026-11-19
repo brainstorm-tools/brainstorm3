@@ -331,6 +331,11 @@ if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember(montagesTo
     % Load default selections
     panel_montage('LoadDefaultMontages');
 end
+% Check that default iEEG electrode models are loaded
+infoMsg = panel_ieeg('UpdateDefaultElectrodeModels');
+if ~isempty(infoMsg)
+    disp(infoMsg);
+end
 
 
 %% ===== INTERNET CONNECTION =====
@@ -498,8 +503,13 @@ panel_process_select('ParseProcessFolder', 1);
 
 %% ===== INSTALL ANATOMY TEMPLATE =====
 % Download ICBM152 template if missing
-TemplateDir = fullfile(BrainstormHomeDir, 'defaults', 'anatomy', 'ICBM152');
+BrainstormDefaultsAnatDir = fullfile(BrainstormHomeDir, 'defaults', 'anatomy');
+TemplateDir = fullfile(BrainstormDefaultsAnatDir, 'ICBM152');
 if ~isCompiled && ~exist(TemplateDir, 'file') && ~isempty(TemplateName)
+    % Ensure dir 'anatomy' exists
+    if ~isdir(BrainstormDefaultsAnatDir)
+        mkdir(BrainstormDefaultsAnatDir);
+    end
     isSkipTemplate = 0;
     % Template file
     ZipFile = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy', [TemplateName '.zip']);

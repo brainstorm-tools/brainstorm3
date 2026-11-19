@@ -79,7 +79,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     AllChannelFiles = unique({sInputs.ChannelFile});
     % Progress bar
     bst_progress('start', 'ft_sourceanalysis', 'Loading input files...', 0, 2*length(sInputs));
-    bst_plugin('SetProgressLogo', 'fieldtrip');
+    bst_progress('setpluginlogo', 'fieldtrip');
    
     % ===== LOOP ON FOLDERS =====
     for iChanFile = 1:length(AllChannelFiles)
@@ -224,7 +224,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Save database
     db_save();
     % Hide progress bar
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
     bst_progress('stop');
 end
 

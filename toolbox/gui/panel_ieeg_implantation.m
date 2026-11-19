@@ -78,13 +78,16 @@ function [bstPanelNew, panelName] = CreatePanel(isMri, isCt, isIso)
 %  === INTERNAL CALLBACKS ==========================================================
 %  =================================================================================
 %% ===== CANCEL BUTTON =====
-    function ButtonCancel_Callback(~, ~)
+    function ButtonCancel_Callback(varargin)
+        % Close panel
         gui_hide(panelName);
     end
 
 %% ===== IMPORT BUTTON =====
-    function ButtonContinue_Callback(~, ~)
-        bst_mutex('release', panelName);  % Triggers gui_show_dialog to call GetPanelContents
+    function ButtonContinue_Callback(varargin)
+        % Release mutex and keep the panel opened
+        bst_mutex('release', panelName);
+        gui_release_dialog(panelName);
     end
 end
 

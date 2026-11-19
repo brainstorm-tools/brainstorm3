@@ -189,6 +189,7 @@ function ButtonOK_Callback(panelName)
     end
 
     bst_mutex('release', panelName);
+    gui_release_dialog(panelName);
     bst_progress('stop');
 end
 

@@ -130,18 +130,22 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
         errMsg = 'The fiducials (NAS, LPA, RPA) are missing in the pre-op (default) MRI. Set them first before proceeding.';
         return;
     end
-
-    % Install/load resection-identification plugin
-    [isOk, errInstall, PlugDesc] = bst_plugin('Install', 'resection-identification', isInteractive);
-    if ~isOk
-        errMsg = [errMsg, errInstall];
-        return;
-    end
-
+    
+    % === CALL RESECTION-IDENTIFICATION PIPELINE ===
+    % Container plugin name
+    plugName = 'resection-identification';
+    bst_progress('text', ['Calling ' plugName]);
+    tic;    
+    % Ensure container plugin: Installs and/or Loads
+    % Install container plugin === Import image into container engine
+    % Load    container plugin === Run container in standby (name ['bst_' plugName])
+    ensureRes = bst_plugin('Ensure', plugName);
+    % Retrieve info of container
+    [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' plugName]);
+    
     % === SAVE BOTH MRI AS NIfTI ===
-    bst_progress('text', 'Exporting pre- and post-op MRI...');
-    % Create temporary folder
-    TmpDir = bst_get('BrainstormTmpDir', 0, 'resection_identification');
+    % Get temporary folder from container info
+    TmpDir = containerInfo.volumes{1,1};
     % Save pre-op MRI
     preOpNii = bst_fullfile(TmpDir, 'preop.nii');
     out_mri_nii(sMriPreOp, preOpNii);
@@ -149,20 +153,19 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
     postOpNii = bst_fullfile(TmpDir, 'postop.nii');
     sMriPostOp = in_mri_bst(MriFilePostOp);
     out_mri_nii(sMriPostOp, postOpNii);
-    
-    % === CALL RESECTION-IDENTIFICATION PIPELINE ===
-    bst_progress('text', 'Calling resection-identification...');
-    % Get resection-identification executable
-    ResecExe = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, PlugDesc.TestFile);
-    % Call resection-identification
-    strCall = ['"' ResecExe '"' ' ' '"' preOpNii '"' ' ' '"' postOpNii '"' ' ' '"' TmpDir '"'];
-    disp(['RESEC_ID > System call: ' strCall]);
-    tic;
-    status = system(strCall);
-    if (status ~= 0)
-        errMsg = 'Error during resection-identification, see logs in the command window.';
-        bst_progress('stop');
-        return;
+    % Make dir for processed files
+    mkdir(bst_fullfile(TmpDir, 'temp_dir_resection'));
+
+    % === RUN COMMAND IN CONTAINER =====
+    if isempty(errMsg) && containerInfo.isRunning
+        dataPath = containerInfo.volumes{1,2};
+        command = [' python3 auto_resection_mask.py ' dataPath '/preop.nii ' dataPath '/postop.nii'];
+        errMsg = bst_containers('ExecInContainer', containerInfo.name, command);
+    else
+        errMsg = 'Container is not running';
+    end
+    if ~isempty(errMsg)
+        return
     end
     disp(['RESEC_ID > Computation completed in: ' num2str(round(toc)) ' s']);
 
@@ -182,8 +185,10 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
     Post2PreOpNii  = bst_fullfile(TmpDir, 'postop.nonlin.post2pre.nii.gz');
     MriFilePost2PreOp = import_mri(iSubject, Post2PreOpNii, 'Nifti1', 0, 1, 'postop_coreg_preop');
     
-    % Delete the temporary files
-    file_delete(TmpDir, 1, 1);
+    % Unload container plugin === Stop container and Delete bind files
+    if ensureRes > 0
+        bst_plugin('Unload', plugName);
+    end
     % Return success
     isOk = 1;
 end

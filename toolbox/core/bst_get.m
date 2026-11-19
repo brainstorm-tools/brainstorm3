@@ -142,6 +142,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('MatlabReleaseName')     : Matlab version (release name, eg. "R2014a")
 %    - bst_get('JavaVersion')           : Java version
 %    - bst_get('isJavacomponent')       : Returns 1 if javacomponent is available (Matlab < 2019b), 0 otherwise
+%    - bst_get('JavacomponentStatus')   : 0 = javacomponent is available, 1 = use figure+uicontrol, 2 = figure accepts UI elements
 %    - bst_get('SystemMemory')          : Amount of Total and Available physical memory (RAM), in MiB
 %    - bst_get('ByteOrder')             : {'l','b'} - Byte order used to read and save binary files 
 %    - bst_get('TSDisplayMode')         : {'butterfly','column'}
@@ -294,6 +295,26 @@ switch contextName
     case 'isJavacomponent'
         % After Matlab 2019b, javacomponent() and JavaFrame property have been deprecated
         argout1 = (bst_get('MatlabVersion') <= 906);
+
+    case 'JavacomponentStatus'
+        MatlabVersion = bst_get('MatlabVersion');
+        % For Matlab <  2019b,
+        % Using javacomponent() does not produce warnings
+        if MatlabVersion < 907 % < 2019b
+            argout1 = 0;
+
+        % For Matlab >= 2019b, javacomponent() and JavaFrame property have been deprecated
+        % Using javacomponent() triggers the warning: MATLAB:ui:javacomponent:FunctionToBeRemoved
+        % It is possible to use figure() + uicontrols
+        elseif MatlabVersion < 2501 % 2019b <= Matlab < 2025a
+            argout1 = 1;
+
+        % For Matlab >= 2025b, javacomponent() and JavaFrame property have been deprecated
+        % Using javacomponent() triggers the warning: MATLAB:ui:javacomponent:BridgeForWebFigures
+        % It is possible to use figure() + UI elements
+        else
+            argout1 = 2;
+        end
         
     case 'SystemMemory'
         % [RamTotal_MiB, RamAvailable_MiB] = bst_get('SystemMemory')
@@ -2362,16 +2383,20 @@ switch contextName
         end
         % Get defaults from internet 
         if ~ismember('icbm152', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2023b';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2026';
             sTemplates(end).Name = 'ICBM152';
         end
-        if ~ismember('icbm152_2022', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2022';
-            sTemplates(end).Name = 'ICBM152_2022';
+        if ~ismember('icbm152_2026', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2026';
+            sTemplates(end).Name = 'ICBM152_2026';
         end
         if ~ismember('icbm152_2023b', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2023b';
             sTemplates(end).Name = 'ICBM152_2023b';
+        end
+        if ~ismember('icbm152_2022', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2022';
+            sTemplates(end).Name = 'ICBM152_2022';
         end
         if ~ismember('icbm152_2019', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
@@ -2548,14 +2573,29 @@ switch contextName
             sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
         end
         if ~ismember('julich-brain-v25', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Julich-Brain-v25';
-            sTemplates(end).Name = 'Julich-Brain-v25';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Julich-Brain';
+            sTemplates(end).Name = 'Julich-Brain';
             sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
         end
         if ~ismember('schaefer2018_100_7net', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Schaefer2018';
             sTemplates(end).Name = 'Schaefer2018';
             sTemplates(end).Info = 'https://github.com/ThomasYeoLab/CBIG/tree/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal';
+        end
+        if ~ismember('yba696', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_YBA_696';
+            sTemplates(end).Name = 'YBA_696';
+            sTemplates(end).Info = 'https://yalebrainatlas.github.io/YaleBrainAtlas/';
+        end
+        if ~ismember('uscbrain', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_USCBrain';
+            sTemplates(end).Name = 'USCBrain';
+            sTemplates(end).Info = 'https://brainsuite.org/uscbrainatlas/';
+        end
+        if ~ismember('bci-dni_brain', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_BCI-DNI_brain';
+            sTemplates(end).Name = 'BCI-DNI_brain';
+            sTemplates(end).Info = 'https://brainsuite.org/bcidnibrainatlas/';
         end
         % Return defaults list
         argout1 = sTemplates;
@@ -2994,6 +3034,23 @@ switch contextName
             end
         end
         
+    case 'ContainerEngine'
+        containerEngines = {'auto-detect', 'docker'};
+        % Get saved value
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ContainerEngine') && ~isempty(GlobalData.Preferences.ContainerEngine)
+            argout1 = GlobalData.Preferences.ContainerEngine;
+        else
+            argout1 = containerEngines{1};
+        end
+        argout2 = containerEngines;
+
+    case 'ContainerUseGpu'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ContainerUseGpu') && ~isempty(GlobalData.Preferences.ContainerUseGpu)
+            argout1 = GlobalData.Preferences.ContainerUseGpu;
+        else
+            argout1 = 0;
+        end
+
     case 'ElectrodeConfig'
         % Get modality
         Modality = varargin{2};
@@ -3099,13 +3156,15 @@ switch contextName
             'ImportChannel',   '', ...
             'ImportAnat',      '', ...
             'ImportMontage',   '', ...
+            'ImportEvents',    '', ...
             'ExportChannel',   '', ...
             'ExportData',      '', ...
             'ExportAnat',      '', ...
             'ExportProtocol',  '', ...
             'ExportImage',     '', ...
             'ExportScript',    '', ...
-            'ExportMontage',   '');
+            'ExportMontage',   '', ...
+            'ExportEvents',    '');
         argout1 = FillMissingFields(contextName, defPref);
         % Check that all folders are valid
         fields = fieldnames(argout1);
@@ -3622,7 +3681,7 @@ switch contextName
                     {'.ima'},          'MRI: BrainVISA GIS (*.ima/*.dim)',   'GIS'; ...
                     {'.mri'},          'MRI: CTF (*.mri)',                   'CTF'; ...
                     {'.mat'},          'MRI: FieldTrip (*.mat)',             'FT-MRI'; ...
-                    {'.nii'},          'MRI: NIfTI-1 (*.nii)',               'Nifti1';...
+                    {'.nii', '.gz'}    'MRI: NIfTI-1 (*.nii;*.nii.gz)',      'Nifti1';...
                     {'.jnii','.bnii'}, 'MRI: JNIfTI (*.jnii;*.bnii)',        'JNIfTI';...
                    };
             case 'anatin'
@@ -3666,6 +3725,7 @@ switch contextName
                     {'.fif'},   'MNE (*.fif)',             'FIF'; ...
                     {'.obj'},   'MNI OBJ (*.obj)',         'MNIOBJ'; ...
                     {'.obj'},   'Wavefront OBJ (*.obj)',   'WFTOBJ'; ...
+                    {'.ply'},   'Polygon file format (*.ply)', 'PLY'; ...
                     {'.srf'},   'BESA (*.srf)',            'BESA-SRF'; ...
                     {'.msh'},   'SimNIBS3/headreco Gmsh4 (*.msh)', 'SIMNIBS3'; ...
                     {'.msh'},   'SimNIBS4/charm Gmsh4 (*.msh)', 'SIMNIBS4'; ...

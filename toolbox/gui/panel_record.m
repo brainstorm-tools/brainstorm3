@@ -169,6 +169,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Detect multiple responses', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_multiresp'));
         gui_component('MenuItem', jMenu, [], 'Group by name', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_groupname'));
         gui_component('MenuItem', jMenu, [], 'Group by time', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_grouptime'));
+        gui_component('MenuItem', jMenu, [], 'Merge overlapping extended events', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_mergeext'));
         gui_component('MenuItem', jMenu, [], 'Add time offset', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)CallProcessOnRaw('process_evt_timeoffset'));
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Show HED tags', IconLoader.ICON_MATRIX, [], @(h,ev)ShowHedTags);
@@ -2140,7 +2141,7 @@ function EventTypesSort(SortMode)
     % Orber by...
     switch lower(SortMode)
         case 'name'
-            [tmp,iOrder] = sort({events.label});
+            [tmp,iOrder] = sort_nat({events.label});
         case 'time'
             firstTime = zeros(1,length(events));
             for iEvt = 1:length(events)
@@ -3098,87 +3099,50 @@ function CopyRawToDatabase(DataFiles) %#ok<DEFNU>
 end
 
 
-%% ===== SET ACQUISITION DATE AND TIME =====
-function SetAcquisitionDate(iStudy, newDatetime) %#ok<DEFNU>
+%% ===== SET ACQUISITION DATE =====
+function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
     % Parse inputs
-    if (nargin < 2) || isempty(newDatetime)
-        newDatetime = [];
+    if (nargin < 2) || isempty(newDate)
+        newDate = [];
     end
     % Get data info
     sStudy = bst_get('Study', iStudy);
     if isempty(sStudy)
         return;
     end
-    % Parse existing string YYYY-MM-DDThh:mm:ss
-    oldDatetime = '1900-01-01T00:00:00';
+    % Parse existing string dd-MMM-yyyy or YYYY-MM-DDThh:mm:ss
+    oldDate = '01-Jan-1900';
     if ~isempty(sStudy.DateOfStudy)
-        oldDatetime = datetime(sStudy.DateOfStudy);
-        try
-            oldDatetime = datetime(oldDatetime);
-        catch
+        studyDate = str_date(sStudy.DateOfStudy);
+        if isempty(studyDate)
             error('Invalid date format. Input must be ''DD-MMM-YYYY'' or ''YYYY-MM-DDThh:mm:ss''');
         end
+        oldDate = studyDate;
     end
     % If new date is not given in argument: ask user
-    if isempty(newDatetime)
-        % Prepare default Date and Time strings
+    if isempty(newDate)
+        oldDatetime = datetime(oldDate, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US');
+        % Prepare default Date strings
         oldDateStr = sprintf('%04d-%02d-%02d', oldDatetime.Year,  oldDatetime.Month, oldDatetime.Day);
-        oldTimeStr = '';
-        if any([oldDatetime.Hour, oldDatetime.Minute, oldDatetime.Second] ~= 0)
-            oldTimeStr = sprintf('%02d:%02d:%02d', oldDatetime.Hour,  oldDatetime.Minute, oldDatetime.Second);
-        end
         % Ask for new date
-        res = java_dialog('input', {'Date (YYYY-MM-DD):', '24-hour time (HH:MM:SS) [ignore if empty]:'}, ...
-            'Recording start datetime', [], {oldDateStr, oldTimeStr});
-        if isempty(res) || isempty(res{1})
+        res = java_dialog('input', 'Date (YYYY-MM-DD):', 'Acquisition date', [], oldDateStr);
+        if isempty(res)
             return;
         end
-        inputFormat = 'yyyy-MM-dd';
-        newDatetime = res{1};
-        if length(res) > 1 && ~isempty(res{2})
-            inputFormat = [inputFormat ' ' 'HH:mm:ss'];
-            newDatetime = [newDatetime ' ' res{2}];
-        end
+        newDate = str_date(res);
     else
-        % Use space as separator between date and time
-        ix = strfind(newDatetime, 'T');
-        if ~isempty(ix)
-            newDatetime(ix) = ' ';
-        end
-        % Keep only date string
-        datetimeStrs = strsplit(newDatetime, ' ');
-        if length(datetimeStrs) < 1
-            return
-        end
-        % Change date input to dd-MMM-yyyy
-        dateStrDMY = str_date(datetimeStrs{1});
-        % Replace in original input
-        newDatetime = strrep(newDatetime, datetimeStrs{1}, dateStrDMY);
-        inputFormat = 'dd-MMM-yyyy';
-        if length(datetimeStrs) > 1
-            nValues = length(sscanf(datetimeStrs{2}, '%d:%d:%d'));
-            if nValues == 2
-                inputFormat = [inputFormat, ' ', 'HH:mm'];
-            elseif nValues == 3
-                inputFormat = [inputFormat, ' ', 'HH:mm:ss'];
-            end
-        end
+        newDate = str_date(newDate);
     end
-    % Try to generate datetime object from GUI or argin
-    try
-        newDatetime = datetime(newDatetime, 'InputFormat', inputFormat);
-    catch
-        error('Invalid date format. Input must be ''DD-MMM-YYYY'', ''YYYY-MM-DD hh:mm:ss'', ''YYYY-MM-DD hh:mm''');
+    % Check if newDate was converted to dd-MMM-yyyy in English
+    if isempty(newDate)
+        error('Invalid date format. Input must be ''dd-MMM-yyyy'' (English) or ''yyyy-MM-dd''');
     end
-    % New datetime string to convert to char
-    newDatetime.Format = 'yyyy-MM-dd''T''HH:mm:ss';
 
     % If the date didn't change: exit
-    if strcmpi(char(newDatetime), sStudy.DateOfStudy)
+    if strcmpi(newDate, sStudy.DateOfStudy)
         return;
     end
 
-    newDate = char(newDatetime);
     % Save acquisition data in study file
     StudyFile = file_fullpath(sStudy.FileName);
     StudyMat = load(StudyFile);

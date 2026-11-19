@@ -22,8 +22,13 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %     .EEGMethod:  Method used to compute the forward model for EEG sensors.
 %         - 'eeg_3sphereberg' : EEG forward modeling with a set of 3 concentric spheres (Scalp, Skull, Brain/CSF) 
 %         - 'openmeeg'        : OpenMEEG forward model
-%     .SEEGMethod:    'openmeeg' and 'duneuro'  
-%     .ECOGMethod:    'openmeeg' and 'duneuro' 
+%     .SEEGMethod: Method used to compute the forward model for SEEG sensors.
+%         - 'homogeneous' : Infinite homogeneous medium
+%         - 'openmeeg'    : OpenMEEG forward model
+%         - 'duneuro'     : DUNEuro forward model
+%     .ECOGMethod: Method used to compute the forward model for ECOG sensors.
+%         - 'openmeeg'    : OpenMEEG forward model
+%         - 'duneuro'     : DUNEuro forward model
 %     .NIRSMethod:    'import'
 %
 %     ======= METHODS OPTIONS =============================================
@@ -414,12 +419,12 @@ else
     end
 end
 % Check for any sensor located "inside" the inner skull (that shouldn't be there)
-allLoc = [OPTIONS.Channel([iMeg iEeg, iNirs]).Loc];
+allLoc = [OPTIONS.Channel([iMeg iEeg]).Loc];
 if ~isempty(allLoc)
     iVertInside = find(inpolyhd(allLoc, sSurfInner.Vertices, sSurfInner.Faces));
     % Warning if there are some sensors inside
     if ~isempty(iVertInside)
-        errMessage = ['Some EEG, MEG  or NIRS sensors are located inside the brain volume.' 10 ...
+        errMessage = ['Some EEG, or MEG sensors are located inside the brain volume.' 10 ...
                       'You should check the positions of the sensors and the type of the channels.' 10 10 ...
                       'Position: Right-click on the channel file > MRI registration > Edit.' 10 ...
                       'Type: Right-click on the channel file > Edit channel file.'];
@@ -507,7 +512,7 @@ end
 if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
-    bst_progress('setimage', 'plugins/duneuro_logo.png');
+    bst_progress('setpluginlogo', 'duneuro');
     % Run duneuro FEM computation
     [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
     % Comment in history field
@@ -536,6 +541,13 @@ if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod
     Gain(~isnan(Gain_dn)) = Gain_dn(~isnan(Gain_dn));
 end
 
+%% ===== COMPUTE: SEEG INFINITE HOMOGENEOUS MEDIUM HEADMODEL =====
+if strcmp('homogeneous', OPTIONS.SEEGMethod)
+    Gain(iSeeg, :) = bst_seeg_homogeneous(OPTIONS.GridLoc, OPTIONS.Channel(iSeeg), sSurfInner, OPTIONS);
+    strHistory =  [strHistory, ' | ', 'Homogeneous medium (SEEG)', ...
+                               ' | ', sprintf('Conductivity: %1.3f S/m', OPTIONS.Conductivity), ...
+                               ' | ', sprintf('Min dist. betweem SEEG contact and dipoles: %1.3f mm', OPTIONS.MinSeegDipoleDist)];
+end
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
 Param = [];
@@ -616,7 +628,7 @@ end
 
 %% ===== COMPUTE: NIRSTORM HEADMODELS =====
 if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
-    if ~strcmp(OPTIONS.HeadModelType, 'surface')
+    if ~strcmp(OPTIONS.HeadModelType, 'surface') && ~strcmp(OPTIONS.HeadModelType, 'volume')
         errMessage = sprintf('%s headmodel is not supported for NIRS', OPTIONS.HeadModelType);
         OPTIONS = [];
         return;
@@ -637,12 +649,14 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
     end
     % Get Subject
     sSubject = bst_get('SurfaceFile', OutSurfaceFile);
-    voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
     % Subject Informations 
     OPTIONS.SubjectName = sSubject.Name;
     OPTIONS.MriFile     = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    OPTIONS.VoronoiFile = voronoi_fn;
-    OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
+    if strcmp(OPTIONS.HeadModelType, 'surface')
+        voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
+        OPTIONS.VoronoiFile = voronoi_fn;
+        OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
+    end
     % Use defined options
     if ~isfield(OPTIONS, 'FluenceFolder') ||  ~isfield(OPTIONS, 'smoothing_method')  ||  ~isfield(OPTIONS, 'smoothing_fwhm')
         sOptions = gui_show_dialog('NIRS headmodel options', @panel_headmodel_nirstorm);
@@ -655,6 +669,11 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
     end
     % Compute head model
     [gain_nirs, errMessage, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
+    if  ~isempty(errMessage)
+        OPTIONS = [];
+        return;
+    end
+
     if  ~isempty(warning_message)
         for iMessage = 1:length(warning_message)
             warning(warning_message{iMessage});

@@ -638,7 +638,7 @@ function [ChannelMat, isError] = AdjustHeadPosition(ChannelMat, sInputs, sProces
     else
         DataMat = in_bst_data(sInputs(1).FileName, {'Device', 'Events', 'Time'});
     end
-    if ~strcmp(DataMat.Device, 'CTF')
+    if ~any(strcmpi(strsplit(DataMat.Device, ','), 'CTF'))
         bst_report('Error', sProcess, sInputs, ...
             'Adjust head position is currently only available for CTF data.');
         isError = true;

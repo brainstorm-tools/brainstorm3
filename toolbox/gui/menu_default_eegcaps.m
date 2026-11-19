@@ -1,4 +1,4 @@
-function menu_default_eegcaps(jMenu, iAllStudies, isAddLoc)
+function menu_default_eegcaps(jMenu, iAllStudies, isAddLoc, dirNames, isDirMenu)
 % MENU_DEFAULT_EEGCAPS: Generate Brainstorm available EEG caps menu
 % 
 % USAGE: menu_default_eegcaps(jMenu, iAllStudies, isAddLoc)
@@ -8,6 +8,9 @@ function menu_default_eegcaps(jMenu, iAllStudies, isAddLoc)
 %    - iAllStudies : All studies in the protocol
 %    - isAddLoc    : if 1 (SEEG/ECOG) or 2 (EEG), call 'channel_add_loc' 
 %                    if 0 call 'db_set_channel'
+%    - dirNames    : Shown only the EEG caps for this dirNames
+%    - isDirMenu   : if 0, skip the [DIR] level menu:  Caps > [DIR] > Models
+%                    if more than one DIR, isDirMenu is always 1
                         
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -43,15 +46,37 @@ end
 if (nargin < 3) || isempty(isAddLoc)
     isAddLoc = [];
 end
+if (nargin < 4) || isempty(dirNames)
+    dirNames = [];
+elseif ischar(dirNames)
+    dirNames = {dirNames};
+end
+if (nargin < 5) || isempty(isDirMenu)
+    isDirMenu = 1;
+end
 
 % Get the digitize options
 DigitizeOptions = bst_get('DigitizeOptions');
 % Get registered Brainstorm EEG defaults
 bstDefaults = bst_get('EegDefaults');
 if ~isempty(bstDefaults)
+    % Keep only requested dirs
+    if ~isempty(dirNames) && all(ismember(dirNames, {bstDefaults.name}))
+        [~, ~, iKeep] = intersect(dirNames, {bstDefaults.name}, 'stable');
+        bstDefaults = bstDefaults(iKeep);
+        if length(iKeep) > 1
+            isDirMenu = 1;
+        end
+    else
+        isDirMenu = 1;
+    end
     % Add a directory per template block available
     for iDir = 1:length(bstDefaults)
-        jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
+        if isDirMenu
+            jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
+        else
+            jMenuDir = jMenu;
+        end
         isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
         % Create subfolder for cap manufacturer
         jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);

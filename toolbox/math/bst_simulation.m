@@ -1,7 +1,7 @@
-function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeAtlas)
+function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeAtlas, iStudy)
 % BST_SIMULATION:  Create a pseudo-recordings file by multiplying the forward model with the sources.
 %
-% USAGE:  newDataFile = bst_simulation(ResultsFile, iVertices, Comment='', isVolumeAtlas=0)
+% USAGE:  newDataFile = bst_simulation(ResultsFile, iVertices, Comment='', isVolumeAtlas=0, iStudy = [])
 %         newDataFile = bst_simulation(ResultsFile, iVertices)  : Use only the selected vertices
 %         newDataFile = bst_simulation(ResultsFile)             : Use all the vertices
 %
@@ -9,6 +9,7 @@ function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeA
 %     - ResultsFile : Full or relative path to a brainstorm sources file
 %     - iVertices   : Indices of the sources to use to simulate the recordings
 %     - Comment     : Comment inserted in the created file
+%     - iStudy      : Study with headmodel (fwd model) to be used. Default, use ResultsFile study
 % OUTPUT:
 %     - newDataFile : Full path to the simulated recordings file created and saved in the database
 
@@ -34,6 +35,11 @@ function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeA
 
 %% ===== PARSE INPUTS =====
 global GlobalData;
+
+% No target study
+if (nargin < 5)
+    iStudy = [];
+end
 % Is iVertices obtained on a volume atlas
 if (nargin < 4) || isempty(isVolumeAtlas)
     isVolumeAtlas = 0;
@@ -63,13 +69,13 @@ ResultsMat = in_bst_results(ResultsFile, 0,  'HeadModelFile', 'Function', 'DataF
 if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Atlas)
     bst_error('Cannot process sources that have been downsampled based on an atlas.', 'bst_simulation', 0);
     return;
-elseif ~ismember(ResultsMat.Function, {'wmne', 'mn'})
+elseif ~ismember(lower(ResultsMat.Function), {'wmne', 'mn', 'cmem', 'wmem'})
     bst_error('The simulation of recordings is only available for current density maps (minimum norm without normalization).', 'bst_simulation', 0);
     return;
 end
 % Get associated data file
 if ~isempty(ResultsMat.DataFile)
-    DataFile = file_short(ResultsMat.DataFile);
+    [~, DataFile] = bst_fileparts(file_short(ResultsMat.DataFile));
 else
     DataFile = [];
 end
@@ -86,7 +92,11 @@ if (nComponents == 0)
     % Count the number of head model dipoles needed for each
     nLocResults = length([GridAtlas.Scouts.GridRows]);
 else
-    nSrc = max(size(GlobalData.DataSet(iDS).Results(iResult).ImagingKernel,1), size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp,1));
+    if iscell(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+        nSrc = max(size(GlobalData.DataSet(iDS).Results(iResult).ImagingKernel,1), size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp{1},1));
+    else
+        nSrc = max(size(GlobalData.DataSet(iDS).Results(iResult).ImagingKernel,1), size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp,1));
+    end
     nLocResults = round(nSrc ./ nComponents);
 end
 % If some vertices are specified: Convert their indices
@@ -114,8 +124,18 @@ end
 
 % ===== LOAD GAIN MATRIX =====
 bst_progress('text', 'Loading head model...');
-% Get study
-[sStudy, iStudy] = bst_get('ResultsFile', ResultsFile);
+% Get target study
+[sStudyResults, iStudyResults] = bst_get('ResultsFile', ResultsFile);
+if isempty(iStudy) || (iStudy == iStudyResults)
+    sStudy = sStudyResults;
+    iStudy = iStudyResults;
+else
+    sStudy = bst_get('Study', iStudy);
+    if isempty(sStudy)
+        bst_error(sprintf('Target study (%d) does not exist in the Protocol.', iStudy), 'bst_simulation', 0);
+        return
+    end
+end
 % Get default headmodel for this study
 sHeadModel = bst_get('HeadModelForStudy', iStudy);
 if isempty(sHeadModel)
@@ -129,18 +149,18 @@ HeadModelMat = in_bst_headmodel(HeadModelFile, 0, 'Gain', 'GridLoc', 'GridOrient
 nLocHeadmodel = size(HeadModelMat.GridLoc, 1);
 
 % If the head model doesn't match the number of vertices: try loading the head model pointed by the results file
-if (nLocHeadmodel ~= nLocResults)
+if (nLocHeadmodel ~= nLocResults) && (iStudy == iStudyResults)
     % Get headmodel file from ResultsFile
     HeadModelFile = ResultsMat.HeadModelFile;
     % Load HeadModel file
     HeadModelMat = in_bst_headmodel(HeadModelFile, 0, 'Gain', 'GridLoc', 'GridOrient', 'GridAtlas');
     % Number of dipoles in headmodel
     nLocHeadmodel = size(HeadModelMat.GridLoc, 1);
-    % Check again the number of vertices
-    if (nLocHeadmodel ~= nLocResults)
-        bst_error(sprintf('Number of dipoles in the head model (%d) and the inverse model (%d) do not match.', nLocHeadmodel, nLocResults), 'bst_simulation', 0);
-        return;
-    end
+end
+% Check the number of vertices
+if (nLocHeadmodel ~= nLocResults)
+    bst_error(sprintf('Number of dipoles in the head model (%d) and the inverse model (%d) do not match.', nLocHeadmodel, nLocResults), 'bst_simulation', 0);
+    return;
 end
 % If no orientations: error
 if (nComponents ~= 3) && isempty(HeadModelMat.GridOrient)
@@ -203,7 +223,7 @@ DataMat = db_template('DataMat');
 DataMat.Comment     = DataComment;
 DataMat.Time        = TimeVector;
 DataMat.F           = F;
-DataMat.ChannelFlag = GlobalData.DataSet(iDS).Results(iResult).ChannelFlag;
+DataMat.ChannelFlag = ones(size(HeadModelMat.Gain, 1), 1);
 DataMat.DataType    = 'recordings';
 % History
 DataMat = bst_history('add', DataMat, 'simulation', 'File simulated: Headmodel * Results');
@@ -214,11 +234,11 @@ DataMat = bst_history('add', DataMat, 'simulation', [' - Results file file: ' Re
 %% ===== SAVE FILE =====
 % Output file
 if isempty(DataFile)
-    outputFolder = bst_fileparts(GlobalData.DataSet(iDS).StudyFile);
-    newDataFile = bst_fullfile(ProtocolInfo.STUDIES, outputFolder, ['data_simulation_', strTime, '.mat']);
+    OutputFileName = ['data_simulation_', strTime, '.mat'];
 else
-    newDataFile = bst_fullfile(ProtocolInfo.STUDIES, strrep(DataFile, '.mat', '_simulation.mat'));
+    OutputFileName = [DataFile, '_simulation.mat'];
 end
+newDataFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sStudy.FileName), OutputFileName);
 newDataFile = file_unique(newDataFile);
 % Save file
 bst_save(newDataFile, DataMat, 'v6');
@@ -226,10 +246,8 @@ bst_save(newDataFile, DataMat, 'v6');
 % ===== UPDATE DATABASE =====
 % Unloading dataset
 bst_memory('UnloadDataSets', iDS);
-% Get study
-[sStudy, iStudy, iResult] = bst_get('ResultsFile', ResultsFile);
 % Add to database
-[sStudy, iNewData] = db_add_data(iStudy, newDataFile, DataMat);
+[~, iNewData] = db_add_data(iStudy, newDataFile, DataMat);
 % Update links
 db_links('Study', iStudy);
 % Update display

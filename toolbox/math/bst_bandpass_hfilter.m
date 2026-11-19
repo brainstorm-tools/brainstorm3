@@ -245,9 +245,15 @@ end
 % Mirror signals
 if (FiltSpec.mirror)
     x = [fliplr(x(:,1:M)), x, fliplr(x(:,end-M+1:end))];
-    % Zero-padding
+% Constant-padding
 else
-    x = [zeros(nChan,M), x, zeros(nChan,M)] ;
+    % Set constat to average within the boundary to limit impact of first/last sample
+    nTransient = round(FiltSpec.transient*Fs);
+    leftUpperLimit  = min(nTransient, nTime);
+    rightLowerLimit = max(1, nTime-nTransient+1);
+    padLeft  = ones(nChan,M) .* mean(x(:,1:leftUpperLimit), 2);
+    padRight = ones(nChan,M) .* mean(x(:,rightLowerLimit:end), 2);
+    x = [padLeft, x, padRight];
 end
 
 % Filter signals

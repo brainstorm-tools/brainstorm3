@@ -34,7 +34,7 @@ if (nargin < 1) || isempty(nvert)
     nvert = 1922;
 else
     % Get the closest possible number of points
-    values = [12 32 42 92 122 162 273 362 482 642 812 1082 1442 1922 2432 2562 3242 4322 5762 7682 7292 9722 10242 12962 40962];
+    values = [12 32 42 92 122 162 273 362 482 642 812 1082 1442 1922 2432 2562 3242 4322 5762 7682 7292 9722 10242 12962 40962, 122882];
     nvert = values(bst_closest(nvert, values));
 end
 % Create icosahedron (fieldtrip function)
@@ -67,6 +67,7 @@ switch(nvert)
     case 9722,   n1 = 5;  n2 = 1;
     case 12962,  n1 = 4;  n2 = 2;
     case 40962,  n1 = 0;  n2 = 6;
+    case 122882, n1 = 1;  n2 = 6;
 end
 
 % Refine sphere
