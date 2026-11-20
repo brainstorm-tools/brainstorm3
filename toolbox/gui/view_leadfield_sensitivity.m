@@ -81,6 +81,7 @@ isVolumeGrid = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 sMri = in_mri_bst(MriFile);
+bst_progress('hide');
 
 % ===== CREATE FIGURE =====
 is3D = 0;
@@ -352,7 +353,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
 %% ===== UPDATE LEADFIELD =====
     function UpdateLeadfield()
         % Compute sensitivity
-        bst_progress('start', 'View leadfields', 'Computing sensitivity...');
+        
         % Sum all the channels
         if (iChannel == 0)
             if isNirs
@@ -460,8 +461,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         if is3D
             UpdateMarkers();
         end
-        % Close progress bar
-        bst_progress('stop');
+
     end
 
 
