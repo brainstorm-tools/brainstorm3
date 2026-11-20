@@ -36,10 +36,10 @@ end
 function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     panelName = 'ProcessOne';
     % Java initializations
-    import java.awt.*;
-    import javax.swing.*;
-    import org.brainstorm.list.*;
-    import org.brainstorm.icon.*;
+    eval('import java.awt.*');
+    eval('import javax.swing.*');
+    eval('import org.brainstorm.list.*');
+    eval('import org.brainstorm.icon.*');
     % Global variable used by this panel
     global GlobalData;
     GlobalData.Processes.Current = [];
@@ -402,8 +402,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     %% ===== PROCESS: SHOW POPUP MENU =====
     % AddMode: {'select', 'add', 'insert'}
     function ShowProcessMenu(AddMode)
-        import java.awt.Insets;
-        import java.awt.Color;
+        eval('import java.awt.Insets');
+        eval('import java.awt.Color');
         % Set mouse cursor to WAIT
         jPanelMain.setCursor(java_create('java.awt.Cursor', 'I', java.awt.Cursor.WAIT_CURSOR));
         % Get the current data type and time vector (after the process pipeline)
@@ -777,9 +777,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
 
     %% ===== PANEL: UPDATE PROCESS OPTIONS =====
     function UpdateProcessOptions()
-        import java.awt.Dimension;
-        import javax.swing.BoxLayout;
-        import org.brainstorm.list.*;
+        eval('import java.awt.Dimension');
+        eval('import javax.swing.BoxLayout');
+        eval('import org.brainstorm.list.*');
         % Starting the update
         isUpdatingPipeline = 1;
         % Font size for the options
