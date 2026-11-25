@@ -521,7 +521,7 @@ function UpdateFigureName(hFig)
                         case {'pdata', 'ptimefreq', 'presults', 'pmatrix'}
                             figureName = ['Stat: ' figureName];
                             imageFile = ['/' sStudy.Stat(iFile).Comment];
-                        case {'noisecov'}
+                        case {'noisecov', 'ndatacov'}
                             figureName = ['Noisecov: ' figureName];
                             imageFile = ['/' sStudy.NoiseCov(iFile).Comment];
                     end
