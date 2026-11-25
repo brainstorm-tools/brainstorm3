@@ -61,6 +61,16 @@ function [hFig, iDS, iFig] = view_covariance(CovarianceFile, Modality, hFig)
         sCov.NoiseCov = sCov.NoiseCov(iMod, iMod);        
     end
     
+    % If there is more than one modality, we scale the value for better
+    % display
+    all_mods = unique({ChannelMat.Channel.Type});
+    if length(all_mods) > 1
+        for iType = 1:length(all_mods)
+            iMod = good_channel(ChannelMat.Channel, [], all_mods(iType));
+            sCov.NoiseCov(iMod, iMod) = sCov.NoiseCov(iMod, iMod) ./ max(abs(sCov.NoiseCov(iMod, iMod)), [], 'all');     
+        end
+    end
+    
     % Get channel names
     RefRowNames = {ChannelMat.Channel.Name};
     RowNames    = {ChannelMat.Channel.Name};
