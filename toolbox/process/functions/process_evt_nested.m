@@ -231,9 +231,9 @@ function newEvents = CreateNewEvents(sNestedEvent, sNestingEvents, partial_nesti
     % Operation
     switch method
         case 'intersection'
-            separator = '^';
+            separator = '_inside_';
         case 'difference'
-            separator = '-';
+            separator = '_outside_';
         otherwise
             error('Unknown opperation %s', method)
     end
