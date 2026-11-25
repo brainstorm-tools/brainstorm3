@@ -266,7 +266,7 @@ switch (lower(action))
                 
             % ===== NOISE COV =====
             case {'noisecov', 'ndatacov'}
-                view_noisecov(filenameRelative);
+                view_covariance(filenameRelative);
 
             % ===== DATA =====
             % View data file (MEG and EEG)
