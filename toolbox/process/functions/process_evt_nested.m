@@ -222,12 +222,6 @@ function event_time = Mask2Time(Time, mask)
     % Adjust with "- 1" due to the zero-padding
     start_segment = find(tmp ==  1) + 1 - 1;
     end_segment   = find(tmp == -1)      -1;
-    if length(start_segment) ==  length(end_segment) -1
-        start_segment = [1 start_segment];
-    end     
-    if length(start_segment) ==  length(end_segment) +1
-        end_segment = [ end_segment length(Time)];
-    end  
     event_time  = [ Time(start_segment) ;  Time(end_segment)  ];
 end
 
