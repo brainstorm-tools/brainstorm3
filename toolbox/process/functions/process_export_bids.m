@@ -719,8 +719,7 @@ function ExportNirs(sRun, ChannelMat, bids, settings)
     % Data files
     export_data(sRun.sInput.FileName, [], newPath, 'NIRS-SNIRF');
     export_channel(sRun.sInput.ChannelFile, bst_fullfile(bids.DataFolder, [bids.Prefix, '_optodes.tsv']), 'BIDS-NIRS-ALS-MM', 0);
-    out_channel_bids_nirs(sRun.sInput.ChannelFile, bst_fullfile(bids.DataFolder, [bids.BaseName, '_channels.tsv']), ...
-        sRun.DataMat.DisplayUnits, sRun.DataMat.F.channelflag);
+    out_channel_bids_nirs(sRun.sInput.ChannelFile, bst_fullfile(bids.DataFolder, [bids.BaseName, '_channels.tsv']), sRun.DataMat.DisplayUnits, sRun.DataMat.F.channelflag);
     
     % Sidecar fields
     OPTIONS = settings.Options;
@@ -733,6 +732,10 @@ function ExportNirs(sRun, ChannelMat, bids, settings)
     metadata = addField(metadata, 'DetectorType', valueOrNA(OPTIONS.NirsDetectorType));
     metadata = addIfNotEmpty(metadata, 'CapManufacturer', OPTIONS.NirsCapManufacturer);
     metadata = addIfNotEmpty(metadata, 'CapManufacturersModelName', OPTIONS.NirsCapModel);
+
+    sData = in_bst_data(sRun.sInput.FileName, 'Time');
+    metadata = addField(metadata, 'RecordingDuration', sData.Time(end) - sData.Time(1));
+
     WriteRecordingFiles(sRun, ChannelMat, 'nirs', newPath, metadata, bids);
 end
 
@@ -769,6 +772,10 @@ function coorddata = GetCoordSystem(ChannelMat, modality)
     coorddata = addField(coorddata, 'FiducialsCoordinateUnits', 'm');
     coorddata = addField(coorddata, 'FiducialsCoordinateSystem', 'CTF');
     coorddata = addField(coorddata, 'FiducialsCoordinateSystemDescription', description);
+    coorddata = addField(coorddata, 'AnatomicalLandmarkCoordinates', SCSprint);
+    coorddata = addField(coorddata, 'AnatomicalLandmarkCoordinateUnits', 'm');
+    coorddata = addField(coorddata, 'AnatomicalLandmarkCoordinateSystem', 'CTF');
+    coorddata = addField(coorddata, 'AnatomicalLandmarkCoordinateSystemDescription', description);
     if strcmp(modality, 'nirs')
         coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'CTF'); % Make sure it isnt CapRAS
         coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', description);
