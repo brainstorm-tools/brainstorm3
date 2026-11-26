@@ -55,22 +55,27 @@ function [hFig, iDS, iFig] = view_covariance(CovarianceFile, Modality, hFig)
     
     % Load channel information
     ChannelMat = in_bst_channel(sStudy.Channel.FileName);
-    if ~isempty(Modality)
-        iMod = good_channel(ChannelMat.Channel, [], Modality);
-        ChannelMat.Channel = ChannelMat.Channel(iMod);
-        sCov.NoiseCov = sCov.NoiseCov(iMod, iMod);        
+    Modality = intersect(Modality, unique({ChannelMat.Channel.Type}));
+    
+    % Nothing to display
+    if isempty(Modality)
+        return;
     end
     
-    % If there is more than one modality, we scale the value for better
-    % display
-    all_mods = unique({ChannelMat.Channel.Type});
-    if length(all_mods) > 1
-        for iType = 1:length(all_mods)
-            iMod = good_channel(ChannelMat.Channel, [], all_mods(iType));
+    % Extract value from the covariance matrix
+    iMod = good_channel(ChannelMat.Channel, [], Modality);
+    ChannelMat.Channel = ChannelMat.Channel(iMod);
+    sCov.NoiseCov = sCov.NoiseCov(iMod, iMod);      
+    
+    % If there is more than one modality, 
+    % we scale the value for better display
+    if length(Modality) > 1
+        for iType = 1:length(Modality)
+            iMod = good_channel(ChannelMat.Channel, [], Modality(iType));
             sCov.NoiseCov(iMod, iMod) = sCov.NoiseCov(iMod, iMod) ./ max(abs(sCov.NoiseCov(iMod, iMod)), [], 'all');     
         end
     end
-    
+
     % Get channel names
     RefRowNames = {ChannelMat.Channel.Name};
     RowNames    = {ChannelMat.Channel.Name};
