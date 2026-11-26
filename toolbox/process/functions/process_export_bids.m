@@ -27,7 +27,7 @@ end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription() 
     % Description the processc
     sProcess.Comment     = 'Export BIDS dataset [experimental]';
     sProcess.Category    = 'Custom';
@@ -100,13 +100,13 @@ end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess) 
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
+function sInputs = Run(sProcess, sInputs) 
     % Parse inputs
     outputFolder  = sProcess.options.bidsdir.Value{1};
     defaceMri     = sProcess.options.defacemri.Value;
