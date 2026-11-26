@@ -821,7 +821,7 @@ function CreateDatasetDescription(parentFolder, overwrite, description, authors,
     
     ProtocolInfo = bst_get('ProtocolInfo');
     description = addField(description, 'Name', ProtocolInfo.Comment);
-    description = addField(description, 'BIDSVersion', '1.1.1');
+    description = addField(description, 'BIDSVersion', '1.3.0');
     description = addField(description, 'DatasetType', FileType);
     description = addField(description, 'Authors', strtrim(str_split(authors,',')));
     description = addField(description, 'GeneratedBy', {struct('Name', 'Brainstorm3', ...
