@@ -469,25 +469,23 @@ end
 function [data, sessionId, runId, lastSesNum, errMsg] = ResolveSession(data, subjectId, info, sesScheme, lastSesNum)
     errMsg = '';
     sessionName = info.SessionName;
+
+    % Session names formatted as "<subject>_ses-<id>_..."
+    subLen = length(info.sSubject.Name);
+    if length(sessionName) > (subLen + 6) && strncmp(sessionName(subLen+6:end), 'ses-', 4)  
+        tokens = regexp(sessionName, '_ses-(\w+)_', 'tokens', 'once');
+        if ~isempty(tokens)
+            sessionName = tokens{1};
+        end
+    end
+
     % Already exported
     [sessionId, runId] = GetSessionId(data, subjectId, sessionName);
     if ~isempty(sessionId)
         return;
     end
-    % Session names formatted as "<subject>_ses-<id>_..."
-    subLen = length(info.sSubject.Name);
-    if strncmp(sessionName(subLen+1:end), '_ses-', 5) && length(sessionName) > (subLen + 5)
-        tokens = regexp(sessionName, '_ses-(\w+)_', 'tokens', 'once');
-        if ~isempty(tokens)
-            if sesScheme == -1
-                sessionId = tokens{1};
-                [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
-                return;
-            elseif sesScheme >= 0
-                disp('Warning: BIDS-formatted session name detected, but numbered index session names selected. A new index will be assigned.');
-            end
-        end
-    end
+
+
     % New session
     if sesScheme == -1
         % Char-based naming scheme
