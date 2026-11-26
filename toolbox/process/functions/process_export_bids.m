@@ -58,7 +58,7 @@ function sProcess = GetDescription()
     sProcess.options.subscheme.Comment = {'Custom names', 'Number index', 'Subject names (sub-XXXX): '};
     sProcess.options.subscheme.Type    = 'radio_line';
     sProcess.options.subscheme.Value   = 2;
-    sProcess.options.sesscheme.Comment = {'Acquisition date', 'Number index', 'Session names (ses-XXXX): '};
+    sProcess.options.sesscheme.Comment = {'Acquisition date', 'Number index', 'Custom names', 'Session names (ses-XXXX): '};
     sProcess.options.sesscheme.Type    = 'radio_line';
     sProcess.options.sesscheme.Value   = 1;
     % Identifying empty room
@@ -228,6 +228,8 @@ function naming = GetNamingSchemes(sProcess)
     if isfield(sProcess.options, 'sesscheme') && ~isempty(sProcess.options.sesscheme.Value)
         if sProcess.options.sesscheme.Value == 1
             naming.SesScheme = -2;
+        elseif sProcess.options.sesscheme.Value == 3
+            naming.SesScheme = -1;
         else
             naming.SesScheme = 4;
         end
@@ -484,7 +486,6 @@ function [data, sessionId, runId, lastSesNum, errMsg] = ResolveSession(data, sub
     if ~isempty(sessionId)
         return;
     end
-
 
     % New session
     if sesScheme == -1
