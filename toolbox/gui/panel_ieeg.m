@@ -1499,8 +1499,8 @@ function AddElectrode(newLabel)
     if isempty(iDS)
         return;
     end
-    % Proceed only if this is an implantation folder
-    if ~isImplantationFolder(iDS)
+    % Confirm that this channel file will be edited
+    if ~ConfirmEditioChannelFile(iDS)
         return;
     end
     % Parse inputs
@@ -1570,8 +1570,8 @@ function AddContact()
     if isempty(iDSall)
         return;
     end
-    % Proceed only if this is an implantation folder
-    if ~isImplantationFolder(iDSall)
+    % Confirm that this channel file will be edited
+    if ~ConfirmEditioChannelFile(iDSall)
         return;
     end
     if isempty(sSelElec)
@@ -1652,8 +1652,8 @@ function RemoveElectrode(sSelElec)
     if isempty(iDSall)
         return;
     end
-    % Proceed only if this is an implantation folder
-    if ~isImplantationFolder(iDSall)
+    % Confirm that this channel file will be edited
+    if ~ConfirmEditioChannelFile(iDSall)
         return;
     end
     % Parse inputs
@@ -1748,8 +1748,8 @@ function RemoveContact()
     if isempty(iDSall)
         return;
     end
-    % Proceed only if this is an implantation folder
-    if ~isImplantationFolder(iDSall)
+    % Confirm that this channel file will be edited
+    if ~ConfirmEditioChannelFile(iDSall)
         return;
     end
     if isempty(sSelElec)
@@ -1869,6 +1869,10 @@ function MergeElectrodes()
     global GlobalData;
     % Get selected electrodes
     [sSelElecOld, ~, iDS, iFig] = GetSelectedElectrodes();
+    % Confirm that this channel file will be edited
+    if ~ConfirmEditioChannelFile(iDS)
+        return;
+    end
     % Need TWO electrodes
     if (length(sSelElecOld) < 2)
         java_dialog('warning', 'You need to select at least two electrodes.', 'Merge selected electrodes');
@@ -2094,6 +2098,83 @@ function sModels = GetElectrodeModels(list)
         sMod(7).ContactNumber = 16;
         sMod(7).ContactSpacing  = 0.00443;
         sMod(7).ElecLength      = 0.0685;
+        sModels = [sModels, sMod];
+
+        % === ALCIS ===
+        % Common values
+        sTemplate = db_template('intraelectrode');
+        sTemplate.Type = 'SEEG';
+        sTemplate.ContactDiameter = 0.0008;
+        sTemplate.ContactLength   = 0.002;
+        sTemplate.ElecDiameter    = 0.0007;
+        % All models
+        sMod = repmat(sTemplate, 1, 12);
+        sMod(1).Model           = 'Alcis 2069-EPC-05C-35';
+        sMod(1).ContactNumber   = 5;
+        sMod(1).ContactSpacing  = 0.0035;
+        sMod(1).ElecLength      = 0.100;
+        sMod(2).Model           = 'Alcis 2069-EPC-08C-35';
+        sMod(2).ContactNumber   = 8;
+        sMod(2).ContactSpacing  = 0.0035;
+        sMod(2).ElecLength      = 0.100;
+        sMod(3).Model           = 'Alcis 2069-EPC-10C-35';
+        sMod(3).ContactNumber   = 10;
+        sMod(3).ContactSpacing  = 0.0035;
+        sMod(3).ElecLength      = 0.100;
+        sMod(4).Model           = 'Alcis 2069-EPC-12C-35';
+        sMod(4).ContactNumber   = 12;
+        sMod(4).ContactSpacing  = 0.0035;
+        sMod(4).ElecLength      = 0.100;
+        sMod(5).Model           = 'Alcis 2069-EPC-15C-35';
+        sMod(5).ContactNumber   = 15;
+        sMod(5).ContactSpacing  = 0.0035;
+        sMod(5).ElecLength      = 0.100;
+        sMod(6).Model           = 'Alcis 2069-EPC-15C-35-3G-07';
+        sMod(6).ContactNumber   = 15;
+        sMod(6).ContactSpacing  = [repmat(0.0035, 1, 4), ...
+                                          0.009,         ...
+                                   repmat(0.0035, 1, 4), ...
+                                          0.009,         ...
+                                   repmat(0.0035, 1, 4)];
+        sMod(6).ElecLength      = 0.100;
+        sMod(7).Model           = 'Alcis 2069-EPC-15C-35-3G-11';
+        sMod(7).ContactNumber   = 15;
+        sMod(7).ContactSpacing  = [repmat(0.0035, 1, 4), ...
+                                          0.013,         ...
+                                   repmat(0.0035, 1, 4), ...
+                                          0.013,         ...
+                                   repmat(0.0035, 1, 4)];
+        sMod(7).ElecLength      = 0.100;
+        sMod(8).Model           = 'Alcis 2069-EPC-15E-20';
+        sMod(8).ContactNumber   = 15;
+        sMod(8).ContactSpacing  = [       0.0025, ...
+                                   repmat(0.0020, 1, 13)];
+        sMod(8).ContactLength   = [       0.0020, ...
+                                   repmat(0.0010, 1, 14)];
+        sMod(8).ElecLength      = 0.100;
+        sMod(9).Model           = 'Alcis 2069-EPC-18C-35';
+        sMod(9).ContactNumber   = 18;
+        sMod(9).ContactSpacing  = 0.0035;
+        sMod(9).ElecLength      = 0.100;
+        sMod(10).Model          = 'Alcis 2069-EPC-18C-35-3G-11';
+        sMod(10).ContactNumber  = 18;
+        sMod(10).ContactSpacing = [repmat(0.0035, 1, 5), ...
+                                          0.013,         ...
+                                   repmat(0.0035, 1, 5), ...
+                                          0.013,         ...
+                                   repmat(0.0035, 1, 5)];
+        sMod(10).ElecLength     = 0.100;
+        sMod(11).Model          = 'Alcis 2069-EPC-18C-40';
+        sMod(11).ContactNumber  = 18;
+        sMod(11).ContactSpacing = 0.0040;
+        sMod(11).ElecLength     = 0.100;
+        sMod(12).Model          = 'Alcis 2069-EPC-18E-20';
+        sMod(12).ContactNumber  = 18;
+        sMod(12).ContactSpacing = [       0.0025, ...
+                                   repmat(0.0020, 1, 16)];
+        sMod(12).ContactLength  = [       0.0020, ...
+                                   repmat(0.0010, 1, 17)];
+        sMod(12).ElecLength     = 0.100;
         sModels = [sModels, sMod];
     end
 end
@@ -2706,8 +2787,8 @@ function SeegAutoContactLocalize(Method)
     if isempty(iDS)
         return;
     end
-    % Proceed only if this is an implantation folder
-    if ~isImplantationFolder(iDS)
+    % Confirm that this channel file will be edited
+    if ~ConfirmEditioChannelFile(iDS)
         return;
     end
     % Get subject
@@ -3251,7 +3332,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
     end
     % If using electrodes in input
     if (nargin >= 5) && ~isempty(sElectrodes) && ~isempty(Channels)
-        isImplantation = 0;
+        isEdition = 0;
         isUpdateDS = 0;
     else
         % Get selected electrode
@@ -3261,8 +3342,8 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
             Channels = [];
             return
         end
-        % Check if this is an implantation folder
-        isImplantation = isImplantationFolder(iDS);
+        % Confirm that this channel file will be edited
+        isEdition = ConfirmEditioChannelFile(iDS);
         % Check if there are channels available
         Channels = GlobalData.DataSet(iDS(1)).Channel;
         if isempty(GlobalData.DataSet(iDS(1)).IntraElectrodes)
@@ -3285,7 +3366,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
         iChan = find(strcmpi({Channels.Group}, sElectrodes(iElec).Name));
         if isempty(iChan) || length(iChan) == 1
             % Add new channels
-            if isImplantation
+            if isEdition
                 sChannel = db_template('channeldesc');
                 switch (sElectrodes(iElec).Type)
                     case 'SEEG'
@@ -3647,10 +3728,9 @@ function SetElectrodeLoc(iLoc, jButton)
     jButton.setForeground(java.awt.Color(0, 0.8, 0));
     % Get the contact for this electrode
     iChan = find(strcmpi({GlobalData.DataSet(iDS(1)).Channel.Group}, sSelElec.Name));
-    % Check if this is an implantation folder
-    isImplantation = isImplantationFolder(iDS);
+    % Confirm that this channel file will be edited
+    isEdition = ConfirmEditioChannelFile(iDS);
     % Update contact positions
-%     if (~isempty(iChan) || isImplantation) && ...
     if ((strcmpi(sSelElec.Type, 'SEEG') && (size(sSelElec.Loc,2) >= 2)) || ...
         (ismember(sSelElec.Type, {'ECOG','ECOG-mid'}) && (length(sSelElec.ContactNumber) == 1) && (size(sSelElec.Loc,2) >= 2)) || ...
         (ismember(sSelElec.Type, {'ECOG','ECOG-mid'}) && (size(sSelElec.Loc,2) >= 4)))
@@ -3663,7 +3743,7 @@ function SetElectrodeLoc(iLoc, jButton)
         if isempty(iChan) || any(cellfun(@(c)or(isempty(c), isequal(c,[0;0;0])), {GlobalData.DataSet(iDS(1)).Channel(iChan).Loc}))
             isAlign = 1;
         % Otherwise, ask for confirmation to the user
-        elseif (~isempty(iChan) || isImplantation)
+        elseif (~isempty(iChan) || isEdition)
             isAlign = java_dialog('confirm', 'Update the positions of the contacts?', 'Set electrode position');
         else
             isAlign = 0;
@@ -4101,12 +4181,33 @@ function XYZ = GetCrosshairLoc(cs)
     end
 end
 
-%% ===== CHECK IF IMPLANTATION FOLDER =====
-function isImplantation = isImplantationFolder(iDS)
+%% ===== GET CONFIRMATION TO EDIT CHANNEL FILE =====
+function isOk = ConfirmEditioChannelFile(iDS)
+    warningStr = '';
+    % Check if Implantation Study is being edited
     global GlobalData;
     [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
-    % Check if folder name starts with 'implantation'
-    isImplantation = strncmpi(folderName, 'implantation', 12);
+    fromImplantation = strncmpi(folderName, 'implantation', 12);
+    if ~fromImplantation
+        % Check all Studies for Subject
+        sStudy = bst_get('StudyWithSubject', GlobalData.DataSet(iDS(1)).SubjectFile);
+        if length(sStudy) > 1
+            warningStr = ['Editing channel file for folder "' folderName ' ". Changes will only apply to' 10 ...
+                          'the channel file in this folder. The electrode and contact positions may then ' 10 ...
+                          'differ from those in other folders of this Subject.'];
+            % Is there an Implantation Study?
+            if any(strncmpi({sStudy.Name}, 'implantation', 12))
+                warningStr = [warningStr 10 10 'Alternatively, edit the channel file in the "Implantation" folder ' 10 ...
+                             'and then Add the iEEG positions from "Implantation" to the other folders.'];
+            end
+        end
+    end
+    % Confirmation is needed
+    if ~isempty(warningStr)
+        isOk = java_dialog('confirm', [warningStr, 10, 10 'Continue edition?'], 'Edit channel file');
+    else
+        isOk = 1;
+    end
 end
 
 %% ===== GENERATE ELECTRODE LABELS (FOR AUTOMATIC ELECTRODE LABELING) =====
