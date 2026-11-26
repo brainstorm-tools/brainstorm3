@@ -2518,7 +2518,7 @@ function AddHedCtagger()
         return
     end
     % Decode JSON file as EventNames and EventHedTags
-    [newEvtNames, newEvtHedTags] = process_evt_importhed('json2events', newJsonStr, 1);
+    [newEvtNames, newEvtHedTags] = process_evt_importhed('json2events', newJsonStr);
     if ~isempty(setdiff(newEvtNames, orgEvtNames))
         % Check for sanitized names
         cleanOrgEvtNames = matlab.lang.makeValidName(orgEvtNames);

@@ -1,4 +1,4 @@
-function events = in_events_bids(sFile, EventFile)
+function [events, valueMap] = in_events_bids(sFile, EventFile)
 % IN_EVENTS_BIDS: Read a BIDS _events.tsv file (columns "onset", "duration", "trial_type").
 %
 % OUTPUT:
@@ -6,6 +6,7 @@ function events = in_events_bids(sFile, EventFile)
 %        |- label   : Identifier of event #i
 %        |- samples : Array of unique time indices for event #i in the corresponding raw file
 %        |- times   : Array of unique time latencies (in seconds) for event #i in the corresponding raw file
+%    - valueMap: [nRows, 2] cell array, {'value', 'event.label'}. Used to map HED annotations in 'value col'
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -36,6 +37,7 @@ function events = in_events_bids(sFile, EventFile)
 Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel', 'value', 'event_type'}, 0);
 if isempty(Markers) || isempty(Markers{1,1})
     events = [];
+    valueMap = [];
     return;
 end
 % Standardize empty/missing values to empty char.
@@ -82,6 +84,18 @@ for iM = 1:size(Markers, 1)
         Markers{iM,3} = fBase;
     end
 end
+% 'value' for each 'event name'
+eventNames = Markers(:,3);
+% Use the names with 'trial_type-value'
+eventNames(isAddValueInName == 1) = cpMarkers(:,3);
+% Map only eventNames associated with a 'value'
+iVal = ~cellfun(@isempty, Markers(:,5));
+valueMap = [Markers(iVal,5), eventNames(iVal)];
+% Keeo only unique pairs
+pairs = cellfun(@(v,n) [v, char(0), n], valueMap(:,1), valueMap(:,2), 'UniformOutput', 0);
+[~, iUnique] = unique(pairs);
+valueMap = valueMap(iUnique, :);
+
 % Add additional events if any
 if ~isempty(cpMarkers)
     Markers = [Markers; cpMarkers];
