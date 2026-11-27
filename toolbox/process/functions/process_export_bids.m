@@ -27,7 +27,7 @@ end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription() 
     % Description the processc
     sProcess.Comment     = 'Export BIDS dataset [experimental]';
     sProcess.Category    = 'Custom';
@@ -58,7 +58,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.subscheme.Comment = {'Custom names', 'Number index', 'Subject names (sub-XXXX): '};
     sProcess.options.subscheme.Type    = 'radio_line';
     sProcess.options.subscheme.Value   = 2;
-    sProcess.options.sesscheme.Comment = {'Acquisition date', 'Number index', 'Session names (ses-XXXX): '};
+    sProcess.options.sesscheme.Comment = {'Acquisition date', 'Number index', 'Custom names', 'Session names (ses-XXXX): '};
     sProcess.options.sesscheme.Type    = 'radio_line';
     sProcess.options.sesscheme.Value   = 1;
     % Identifying empty room
@@ -74,145 +74,76 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.overwrite.Type    = 'checkbox';
     sProcess.options.overwrite.Value   = 0;
     
-    sProcess.options.label1.Comment = '<U><B>Sidecar required fields</B></U>:';
-    sProcess.options.label1.Type    = 'label';
-    % Dewar position during MEG scan
-    sProcess.options.authors.Comment = 'Authors, separated with commas: ';
-    sProcess.options.authors.Type    = 'text';
-    sProcess.options.authors.Value   = '';
-    % Powerline frequency
-    sProcess.options.powerline.Comment = {'50 Hz', '60 Hz', 'Power line frequency: '};
-    sProcess.options.powerline.Type    = 'radio_line';
-    sProcess.options.powerline.Value   = 2;
-    % Dewar position during MEG scan
-    sProcess.options.dewarposition.Comment = '<B>MEG:</B> Position of the dewar during the scan: ';
-    sProcess.options.dewarposition.Type    = 'text';
-    sProcess.options.dewarposition.Value   = 'Upright';
-    % EEG Reference
-    sProcess.options.eegreference.Comment = '<B>EEG:</B> Electrode reference used: ';
-    sProcess.options.eegreference.Type    = 'text';
-    sProcess.options.eegreference.Value   = 'Cz';
-    % Options: Additional metadata
-    sProcess.options.edit.Comment = {'panel_export_bids', ' Additional metadata :'};
+    % Options: BIDS metadata (project, dataset description, MEG/EEG/NIRS sidecars).
+    % If the output folder already contains a BIDS dataset, its metadata is loaded in the panel.
+    sProcess.options.edit.Comment = {'panel_export_bids', ' BIDS metadata (authors, license, modality-specific fields): '};
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
 end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess) 
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
-    % Parse inputs
+function sInputs = Run(sProcess, sInputs) 
+    %% ===== PARSE OPTIONS =====
     outputFolder  = sProcess.options.bidsdir.Value{1};
     defaceMri     = sProcess.options.defacemri.Value;
     overwrite     = sProcess.options.overwrite.Value;
-    authors       = sProcess.options.authors.Value;
-    dewarPosition = sProcess.options.dewarposition.Value;
-    eegReference  = sProcess.options.eegreference.Value;
     emptyRoomKeywords = strtrim(str_split(lower(sProcess.options.emptyroom.Value), ',;'));
-    OPTIONS = struct_copy_fields(bst_get('ExportBidsOptions'), sProcess.options.edit.Value, 1);
     if isempty(outputFolder)
         bst_report('Error', sProcess, sInputs, 'No output folder specified.');
         return;
     end
-    if isfield(sProcess.options, 'powerline') && ~isempty(sProcess.options.powerline.Value)
-        if sProcess.options.powerline.Value == 1
-            powerline = 50;
-        elseif sProcess.options.powerline.Value == 2
-            powerline = 60;
-        else
-            bst_report('Error', sProcess, sInputs, 'Invalid power line selection.');
-            return;
-        end
-    else
-        powerline = [];
-    end
-    if ~isempty(OPTIONS.JsonDataset)
-        try
-            datasetMetadata = bst_jsondecode(OPTIONS.JsonDataset);
-        catch e
-            bst_report('Error', sProcess, sInputs, ['Invalid dataset description: ' e.message]);
-            return;
-        end
-    else
-        datasetMetadata = struct();
-    end
-    if ~isempty(OPTIONS.JsonMeg)
-        try
-            megMetadata = bst_jsondecode(OPTIONS.JsonMeg);
-        catch e
-            bst_report('Error', sProcess, sInputs, ['Invalid sidecar metadata: ' e.message]);
-            return;
-        end
-    else
-        megMetadata = struct();
-    end
-    if isempty(authors) || isempty(strtrim(authors))
-        bst_report('Error', sProcess, sInputs, 'List of authors cannot be empty.');
+    
+    % Metadata: from the panel, or from the existing dataset if the panel was not validated for this folder
+    OPTIONS = LoadMetadataOptions(sProcess, outputFolder);
+    if isempty(strtrim(OPTIONS.Authors))
+        bst_report('Error', sProcess, sInputs, 'List of authors cannot be empty. Click "Edit..." to fill in the BIDS metadata.');
         return;
     end
-
-    % Default naming schemes
-    if isfield(sProcess.options, 'subscheme') && ~isempty(sProcess.options.subscheme.Value)
-        if sProcess.options.subscheme.Value == 1
-            subScheme = -1;
-        else
-            subScheme = 4;
-        end
+    if any(OPTIONS.PowerLine == [50, 60])
+        powerline = OPTIONS.PowerLine;
     else
-        subScheme = -1; % Char-based
+        powerline = 'n/a';
     end
-    if isfield(sProcess.options, 'sesscheme') && ~isempty(sProcess.options.sesscheme.Value)
-        if sProcess.options.sesscheme.Value == 1
-            sesScheme = -2;
-        else
-            sesScheme = 4;
+    % Additional JSON fields: dataset description + one sidecar per modality
+    jsonList = {'JsonDataset', 'dataset description'; 'JsonMeg', 'MEG sidecar'; 'JsonEeg', 'EEG sidecar'; 'JsonNirs', 'NIRS sidecar'};
+    jsonStructs = cell(1, size(jsonList, 1));
+    for iJson = 1:size(jsonList, 1)
+        jsonStructs{iJson} = struct();
+        if ~isempty(OPTIONS.(jsonList{iJson,1}))
+            try
+                jsonStructs{iJson} = bst_jsondecode(OPTIONS.(jsonList{iJson,1}));
+            catch e
+                bst_report('Error', sProcess, sInputs, ['Invalid ' jsonList{iJson,2} ' metadata: ' e.message]);
+                return;
+            end
         end
-    else
-        sesScheme = -2; % Date-based
     end
-    runScheme = 2;  % Index-based, 2 digits
+    [datasetMetadata, megMetadata, eegMetadata, nirsMetadata] = deal(jsonStructs{:});
+    % Settings shared by all the exported files
+    settings = struct('Overwrite',    overwrite, ...
+                      'PowerLine',    powerline, ...
+                      'Options',      OPTIONS, ...
+                      'SidecarExtra', struct('meg', megMetadata, 'eeg', eegMetadata, 'nirs', nirsMetadata));
+    naming = GetNamingSchemes(sProcess);
     
-    iLastSub = 0;
-    % If folder does not exist, try to create it.
-    if exist(outputFolder, 'dir') ~= 7
-        [success, errMsg] = mkdir(outputFolder);
-        if ~success
-            bst_report('Error', sProcess, sInputs, ['Could not create output folder:' 10 errMsg]);
-            return;
-        end
-        data = EmptyData();
-    % If folder exist, detect existing naming scheme
-    else
-        [prevSubScheme, prevSesScheme, prevRunScheme] = DetectNamingScheme(outputFolder);
-        if isempty(prevSubScheme) || isempty(prevSesScheme) || isempty(prevRunScheme)
-            data = EmptyData();
-        % Warn user for different naming schemes
-        elseif subScheme ~= prevSubScheme || sesScheme ~= prevSesScheme || runScheme ~= prevRunScheme
-            disp(['Warning: Chosen naming scheme(s) different from existing one.' ...
-                10 '         Ignoring existing subjects/sessions in output folder.']);
-            data = EmptyData();
-        else
-            data = LoadExistingData(outputFolder);
-        end
-        
-        % If numbered subject IDs, extract last subject ID
-        if subScheme >= 0
-            iLastSub = GetLastId(outputFolder, 'sub');
-        end
+    %% ===== OUTPUT FOLDER =====
+    % Create it, or load the subject/session mapping of a previous export
+    [data, naming.LastSub, errMsg] = PrepareOutputFolder(outputFolder, naming);
+    if ~isempty(errMsg)
+        bst_report('Error', sProcess, sInputs, errMsg);
+        return;
     end
     
-    % Sort inputs by subjects and acquisition time
+    %% ===== SORT INPUTS, DEFACE =====
     bst_progress('start', 'Export', 'Sorting input files...');
     [sInputs, mrisToDeface] = SortInputs(sInputs, defaceMri);
-    nInputs = length(sInputs);
-    
-    % Deface MRIs if requested
     if defaceMri && ~isempty(mrisToDeface)
         defaceResult = process_mri_deface('Compute', mrisToDeface, struct('isDefaceHead', 0));
         if isempty(defaceResult)
@@ -220,348 +151,655 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     
-    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors);
-    firstAcq = [];
-    lastAcq = [];
-    StimChannelNames = {};
-    EventNames = {};
-    
-    bst_progress('start', 'Export', 'Exporting dataset files...', 0, nInputs);
-    for iInput = 1:nInputs
-        sInput   = sInputs(iInput);
-        sStudy   = bst_get('Study', sInput.iStudy);
-        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-        
-        % Skip unsupported formats
-        DataMat = in_bst_data(sInput.FileName);
-        sFile = DataMat.F;
-        isCtf = strcmpi(sFile.device, 'CTF');
-        isElekta = strcmpi(sFile.device, 'Neuromag');
-        isMeg = isCtf || isElekta;
-        isEeg = strncmpi(sFile.format, 'EEG-', 4) || ismember('EEG', sInputs(iInput).ChannelTypes);
-        isEegBids = ismember(sFile.format, {'EEG-EDF', 'EEG-BRAINAMP', 'EEG-EEGLAB', 'EEG-BDF'});
-        if ~isMeg && ~isEeg
-            disp(['Skipping file "' sFile.filename '" due to unsupported format...']);
-            continue;
-        end
-        
-        % If BST/CTF binary file, find original raw file
-        if strcmpi(sFile.format, 'BST-BIN') && strcmpi(sFile.device, 'CTF')
-            sFile.filename = ExtractOriginalBstFilename(DataMat);
-            disp(['Warning: File "', sFile.comment, '" already imported in binary format.', ...
-                10, '         Using raw link "', sFile.filename, '" instead.']);
-        end
-        
-        % Extract date of study
-        dateOfStudy = ExtractAcquisitionTime(sFile, sInput.iStudy);
-        if isempty(firstAcq) || dateOfStudy < firstAcq
-            firstAcq = dateOfStudy;
-        end
-        if isempty(lastAcq) || dateOfStudy > lastAcq
-            lastAcq = dateOfStudy;
-        end
-        
-        %% Check if subject already exists
-        newSubject = 1;
-        iExistingSub = GetSubjectId(data, sSubject.Name);
-        if ~isempty(iExistingSub)
-            subjectId = iExistingSub;
-            newSubject = 0;
-        % Detect subject names formatted as "sub-<name>"
-        elseif strncmp(sSubject.Name, 'sub-', 4) && length(sSubject.Name) > 5
-            if subScheme == -1
-                subjectId = sSubject.Name(5:end);
-                data = AddSubject(data, sSubject.Name, subjectId);
-                newSubject = 0;
-            else
-                disp('Warning: BIDS-formatted subject name detected, but numbered index subject names selected. A new index will be assigned. Select custom names to avoid this.');
-            end
-        end
-
-        %% Create subject if new
-        if newSubject
-            if subScheme == -1
-                % Char-based naming scheme
-                subjectId = FormatId(sSubject.Name, subScheme);
-            else
-                % Number-based naming scheme, increment from previous
-                subjectId = iLastSub + 1;
-                maxSubjects = power(10, subScheme);
-                if subScheme > 1 && subjectId >= maxSubjects
-                    bst_report('Error', sProcess, sInput, ...
-                        ['Exceeded maximum number of subjects supported by your naming scheme (' num2str(maxSubjects) ').']);
-                    return;
-                end
-            end
-            data = AddSubject(data, sSubject.Name, subjectId);
-        end
-        
-        %% Check if this is the empty room subject
-        if strncmp(sStudy.Name, '@raw', 4)
-            sessionName = sStudy.Name(5:end);
-        else
-            sessionName = sStudy.Name;
-        end
-        isEmptyRoom = strcmp(sSubject.Name, 'sub-emptyroom') || (~isempty(emptyRoomKeywords) && containsKeyword(lower(sessionName), emptyRoomKeywords));
-        if isEmptyRoom
-            realSubjectId = subjectId;
-            subjectId = 'emptyroom';
-            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subScheme, 'sub'));
-            if exist(subjectFolder, 'dir') ~= 7
-                mkdir(subjectFolder);
-            end
-            
-            % Date of study is the session name for empty room recordings
-            [sessionId, runId] = GetSessionId(data, realSubjectId, sessionName);
-            if isempty(sessionId)
-                sessionId = datestr(dateOfStudy, 'yyyymmdd');
-                [data, runId] = AddSession(data, realSubjectId, sessionName, sessionId);
-            end
-            sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, -2, 'ses'));
-            if exist(sessionFolder, 'dir') ~= 7
-                mkdir(sessionFolder);
-            end
-        else
-            subjectFolder = bst_fullfile(outputFolder, FormatId(subjectId, subScheme, 'sub'));
-            if exist(subjectFolder, 'dir') ~= 7
-                mkdir(subjectFolder);
-                iLastSub = subjectId;
-            end
-            
-            %% Check if session already exists
-            newSession = 1;
-            subLen = length(sSubject.Name);
-            [iExistingSes, runId] = GetSessionId(data, subjectId, sessionName);
-            if ~isempty(iExistingSes)
-                sessionId = iExistingSes;
-                newSession = 0;
-            % Detect session names formatted as "ses-<name>"
-            elseif strncmp(sessionName(subLen+1:end), '_ses-', 5) && length(sessionName) > (subLen + 5)
-                sessionId = regexp(sessionName, '_ses-(\w+)_', 'match');
-                if ~isempty(sessionId)
-                    sessionId = sessionId{1};
-                    sessionId = sessionId(6:end-1);
-                    if sesScheme == -1
-                        [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
-                        newSession = 0;
-                    elseif sesScheme >= 0
-                        disp('Warning: BIDS-formatted session name detected, but numbered index session names selected. A new index will be assigned.');
-                    end
-                end
-            end
-
-            %% Create session if new
-            if newSession
-                if sesScheme == -1
-                    % Char-based naming scheme
-                    sessionId = FormatId(sessionName, sesScheme);
-                elseif sesScheme == -2
-                    % Date-based naming scheme
-                    sessionId = datestr(dateOfStudy, 'yyyymmdd');
-                else
-                    % Number-based naming scheme, increment from previous
-                    sessionId = GetLastId(subjectFolder, 'ses') + 1;
-                    maxSessions = power(10, sesScheme);
-                    if sesScheme > 1 && sessionId >= maxSessions
-                        bst_report('Error', sProcess, sInput, ...
-                            ['Exceeded maximum number of sessions supported by your naming scheme (' num2str(maxSessions) ').']);
-                        return;
-                    end
-                end
-                [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
-            end
-            sessionFolder = bst_fullfile(subjectFolder, FormatId(sessionId, sesScheme, 'ses'));
-            if exist(sessionFolder, 'dir') ~= 7
-                mkdir(sessionFolder);
-            end
-        end
-        
-        %% Extract task name
-        [rawFolder, rawName, rawExt] = fileparts(sFile.filename);
-        prefix = [FormatId(subjectId, subScheme, 'sub') '_' FormatId(sessionId, sesScheme, 'ses')];
-        prefixTask = [prefix '_task-'];
-        rest = [];
-        if isEmptyRoom
-            taskName = 'noise';
-            if ~isempty(realSubjectId)
-                rest = ['_acq-sub' FormatId(realSubjectId, subScheme)];
-            end
-        elseif strncmp(rawName, prefixTask, length(prefixTask))
-            rawNameUnprefixed = rawName(length(prefixTask) + 1:end);
-            endTask = strfind(rawNameUnprefixed, '_');
-            if ~isempty(endTask)
-                taskName = rawNameUnprefixed(1:endTask(1) - 1);
-                %rest = rawNameUnprefixed(endTask(1):end);
-            end
-        else
-            taskName = [];
-            
-            % Find task name from format specific metadata if possible
-            if isCtf
-                taskName = ExtractCtfTaskname(sFile);
-            elseif isElekta
-                taskName = ExtractFifTaskname(sFile);
-            end
-            
-            % Otherwise, extract task name from condition
-            if isempty(taskName)
-                taskName = regexprep(rawName,'[^a-zA-Z0-9]','');
-            end
-        end
-        if ~isempty(runId) && ~isempty(FormatId(runId, runScheme))
-            rest = [rest '_run-' FormatId(runId, runScheme)];
-        end
-        
-        %% If first session, save anatomy
-        if ~isEmptyRoom && SameIds(sessionId, GetFirstSessionId(data, subjectId))
-            if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(1).FileName)
-                anatFolder = bst_fullfile(sessionFolder, 'anat');
-                if exist(anatFolder, 'dir') ~= 7
-                    mkdir(anatFolder);
-                end
-                mriFile = bst_fullfile(anatFolder, [prefix '_T1w.nii']);
-                if (exist(mriFile, 'file') ~= 2 && exist([mriFile '.gz'], 'file') ~= 2) || overwrite
-                    if defaceMri
-                        origMri = GetDefacedMri(sSubject);
-                    else
-                        origMri = sSubject.Anatomy(1).FileName;
-                    end
-                    export_mri(origMri, mriFile, 'bids');
-                    mriGzFile = gzip(mriFile);
-                    if ~isempty(mriGzFile)
-                        delete(mriFile);
-                    end
-                end
-            end
-        end
-        
-        %% Extract all stimulation channels
-        ChannelMat = in_bst_channel(sInput.ChannelFile);
-        iStimChans = find(strcmpi('stim', {ChannelMat.Channel.Type}));
-        for iStimChan = 1:length(iStimChans)
-            chan = ChannelMat.Channel(iStimChans(iStimChan)).Name;
-            if ~any(strcmpi(chan, StimChannelNames))
-                StimChannelNames{end + 1} = chan;
-            end
-        end
-        
-        %% Extract all event names
-        for iEvent = 1:length(sFile.events)
-            event = sFile.events(iEvent).label;
-            if ~any(strcmpi(event, EventNames))
-                EventNames{end + 1} = event;
-            end
-        end
-        
-        %% Prepare metadata structure
-        metadata = megMetadata;
-        metadata = addField(metadata, 'TaskName', taskName);
-        metadata = addField(metadata, 'Manufacturer', sFile.device);
-        metadata = addField(metadata, 'SamplingFrequency', sFile.prop.sfreq);
-        if ~isempty(powerline)
-            metadata = addField(metadata, 'PowerLineFrequency', powerline);
-        end
-        [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(ChannelMat);
-        if isMeg
-            metadata = addField(metadata, 'DewarPosition', dewarPosition);
-            metadata = addField(metadata, 'DigitizedLandmarks', bool2str(hasLandmarks));
-            metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
-        elseif isEeg
-            metadata = addField(metadata, 'EEGReference', eegReference);
-        end
-
-        % Extract format-specific metadata
-        if isCtf
-            customMetadata = ExtractCtfMetadata(fileparts(sFile.filename));
-        elseif isElekta
-            customMetadata = ExtractFifMetadata(sFile.filename);
-        else
-            customMetadata = struct('SoftwareFilters', 'n/a');
-        end
-        metadata = struct_copy_fields(metadata, customMetadata, 0);
-        
-        %% Save data
-        % Get modality
-        if isMeg
-            modFolder = 'meg';
-            modSuffix = '_meg';
-        elseif isEeg
-            modFolder = 'eeg';
-            modSuffix = '_eeg';
-        else
-            modFolder = 'data';
-            modSuffix = [];
-        end
-        megFolder = bst_fullfile(sessionFolder, modFolder);
-        if exist(megFolder, 'dir') ~= 7
-            mkdir(megFolder);
-        end
-
-        newName = [prefixTask taskName rest modSuffix];
-        % Copy raw file to output folder
-        if isCtf
-            rawExt = '.ds';
-        elseif isEeg && ~isEegBids
-            rawExt = '.eeg';
-        end
-        newPath = bst_fullfile(megFolder, [newName, rawExt]);
-        if exist(newPath, 'file') == 0 || overwrite
-            if isCtf
-                % Rename internal DS files
-                dsFolder = fileparts(sFile.filename);
-                tempPath = bst_fullfile(megFolder, [rawName, rawExt]);
-                file_copy(dsFolder, tempPath);
-                if ~strcmp(tempPath, newPath)
-                    ctf_rename_ds(tempPath, newPath, []);
-                end
-                % Save Polhemus file
-                if hasHeadPoints
-                    posFile = bst_fullfile(megFolder, [prefix '_headshape.pos']);
-                    out_channel_pos(sInput.ChannelFile, posFile);
-                end
-                % Remove internal Polhemus files
-                delete(bst_fullfile(newPath, '*.pos'));
-            elseif isEeg && ~isEegBids
-                % For EEG-BIDS, only a handful of formats are supported.
-                % Convert unsupported formats to EDF.
-                disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to BrainVision EEG/VHDR.']);
-                export_data(sInput.FileName, [], newPath, 'EEG-BRAINAMP');
-            else
-                % Copy raw data file
-                file_copy(sFile.filename, newPath);
-                % Copy BrainVision meta-data files (.vhdr, .vmrk)
-                if strcmp(sFile.format, 'EEG-BRAINAMP')
-                    % Copy header file
-                    VhdrFile = bst_fullfile(rawFolder, [rawName, '.vhdr']);
-                    if file_exist(VhdrFile)
-                        file_copy(VhdrFile, bst_fullfile(megFolder, [newName, '.vhdr']));
-                    end
-                    % Copy marker file
-                    VmrkFile = bst_fullfile(rawFolder, [rawName, '.vmrk']);
-                    if file_exist(VmrkFile)
-                        file_copy(VmrkFile, bst_fullfile(megFolder, [newName, '.vmrk']));
-                    end
-                end
-            end
-            % Create JSON sidecar
-            jsonFile = bst_fullfile(megFolder, [newName '.json']);
-            CreateMegJson(jsonFile, metadata);
-            
-            % Create session TSV file
-            tsvFile = bst_fullfile(sessionFolder, [prefix '_scans.tsv']);
-            CreateSessionTsv(tsvFile, newPath, dateOfStudy)
-        end
-        
-        bst_progress('inc', 1);
+    %% ===== PLAN: INPUTS => SUBJECT / SESSION / RUN / MODALITY =====
+    % Assign all the BIDS identifiers before writing anything
+    bst_progress('text', 'Identifying subjects, sessions and runs...');
+    [plan, data, errMsg] = BuildExportPlan(sInputs, data, outputFolder, naming, emptyRoomKeywords);
+    if ~isempty(errMsg)
+        bst_report('Error', sProcess, sInputs, errMsg);
+        return;
     end
     
-    % Create README
-    CreateDatasetReadme(outputFolder, overwrite, OPTIONS, firstAcq, lastAcq, StimChannelNames, EventNames);
+    %% ===== EXPORT =====
+    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, OPTIONS, 'raw');
     
+    Summary = struct('StimChannelNames', {{}}, 'EventNames', {{}});
+    bst_progress('start', 'Export', 'Exporting dataset files...', 0, plan.nRuns);
+    
+    for iSubject = 1:length(plan.Subjects)
+        sub = plan.Subjects{iSubject};
+        subjectFolder = bst_fullfile(outputFolder, sub.Label);
+        EnsureDir(subjectFolder);
+        
+        for iSession = 1:length(sub.Sessions)
+            ses = sub.Sessions{iSession};
+            sessionFolder = bst_fullfile(subjectFolder, ses.Label);
+            EnsureDir(sessionFolder);
+            
+            % Export anatomy (once per subject, in the first session)
+            if ~sub.IsEmptyRoom && SameIds(ses.Id, GetFirstSessionId(data, sub.Id))
+                ExportAnatomy(sub.sSubject, sessionFolder, ses.Prefix, defaceMri, overwrite);
+            end
+            
+            for iRun = 1:length(ses.Runs)
+                sRun = ses.Runs{iRun};
+                ChannelMat = in_bst_channel(sRun.sInput.ChannelFile);
+                Summary = UpdateSummary(Summary, ChannelMat, sRun.sFile);
+                
+                for iMod = 1:length(sRun.Modalities)
+                    modality = sRun.Modalities{iMod};
+                    bids = GetBidsPaths(sessionFolder, ses.Prefix, sRun, modality);
+                    
+                    % Export the recording {subject, session, run, modality}
+                    switch modality
+                        case 'meg'
+                            ExportMeg(sRun, ChannelMat, bids, settings);
+                        case 'eeg'
+                            ExportEeg(sRun, ChannelMat, bids, settings);
+                        case 'nirs'
+                            ExportNirs(sRun, ChannelMat, bids, settings);
+                    end
+                end
+                bst_progress('inc', 1);
+            end
+        end
+    end
+    
+    %% ===== DATASET-LEVEL FILES =====
+    CreateDatasetReadme(outputFolder, overwrite, OPTIONS, plan.FirstAcq, plan.LastAcq, Summary.StimChannelNames, Summary.EventNames);
     % Save condition to subject/session mapping for future exports.
     SaveExistingData(data, outputFolder);
 end
 
+
+%% ===== NAMING SCHEMES =====
+% Subjects:  -1 = custom names, 4 = zero-padded index
+% Sessions:  -2 = acquisition date, -1 = custom names, 4 = zero-padded index
+% Runs:       2 = zero-padded index
+function naming = GetNamingSchemes(sProcess)
+    naming = struct('SubScheme', -1, 'SesScheme', -2, 'RunScheme', 2, 'LastSub', 0);
+    if isfield(sProcess.options, 'subscheme') && ~isempty(sProcess.options.subscheme.Value)
+        if sProcess.options.subscheme.Value == 1
+            naming.SubScheme = -1;
+        else
+            naming.SubScheme = 4;
+        end
+    end
+    if isfield(sProcess.options, 'sesscheme') && ~isempty(sProcess.options.sesscheme.Value)
+        if sProcess.options.sesscheme.Value == 1
+            naming.SesScheme = -2;
+        elseif sProcess.options.sesscheme.Value == 3
+            naming.SesScheme = -1;
+        else
+            naming.SesScheme = 4;
+        end
+    end
+end
+
+% Create the output folder, or load the mapping of an existing one.
+% iLastSub: last numbered subject in the folder (for numbered subject names).
+function [data, iLastSub, errMsg] = PrepareOutputFolder(outputFolder, naming)
+    iLastSub = 0;
+    errMsg = '';
+    data = EmptyData();
+    % New folder
+    if exist(outputFolder, 'dir') ~= 7
+        [success, mkdirMsg] = mkdir(outputFolder);
+        if ~success
+            errMsg = ['Could not create output folder:' 10 mkdirMsg];
+        end
+        return;
+    end
+    % Existing folder: detect the naming scheme
+    [prevSubScheme, prevSesScheme, prevRunScheme] = DetectNamingScheme(outputFolder);
+    if isempty(prevSubScheme) || isempty(prevSesScheme) || isempty(prevRunScheme)
+        data = EmptyData();
+    % Warn user for different naming schemes
+    elseif naming.SubScheme ~= prevSubScheme || naming.SesScheme ~= prevSesScheme || naming.RunScheme ~= prevRunScheme
+        disp(['Warning: Chosen naming scheme(s) different from existing one.' ...
+            10 '         Ignoring existing subjects/sessions in output folder.']);
+        data = EmptyData();
+    else
+        data = LoadExistingData(outputFolder);
+    end
+    % If numbered subject IDs, extract last subject ID
+    if naming.SubScheme >= 0
+        iLastSub = GetLastId(outputFolder, 'sub');
+    end
+end
+
+
+%% =================================================================================
+%  === EXPORT PLAN =================================================================
+%  =================================================================================
+% Group the (sorted) inputs in a tree, and assign the BIDS identifiers:
+%
+%   plan.Subjects{i}                BIDS subject (sub-emptyroom is a subject like any other)
+%       .Id, .Label, .sSubject, .IsEmptyRoom
+%       .Sessions{j}                BIDS session
+%           .Id, .Label, .Prefix    (Prefix = 'sub-XX_ses-YY')
+%           .Runs{k}                One input file
+%               .sInput, .sFile, .DataMat, .DateOfStudy
+%               .RunId, .TaskName, .Entities (e.g. '_acq-sub0001_run-01')
+%               .Modalities         {'meg'}, {'eeg'} or {'nirs'}
+%
+% data = subject/session mapping saved in derivatives/bst_db_mapping.mat
+function [plan, data, errMsg] = BuildExportPlan(sInputs, data, outputFolder, naming, emptyRoomKeywords)
+    plan = struct('Subjects', {{}}, 'nRuns', 0, 'FirstAcq', [], 'LastAcq', []);
+    errMsg = '';
+    
+    for iInput = 1:length(sInputs)
+        info = GetInputInfo(sInputs(iInput));
+        if isempty(info)
+            continue;
+        end
+        % Acquisition period of the dataset
+        if isempty(plan.FirstAcq) || info.DateOfStudy < plan.FirstAcq
+            plan.FirstAcq = info.DateOfStudy;
+        end
+        if isempty(plan.LastAcq) || info.DateOfStudy > plan.LastAcq
+            plan.LastAcq = info.DateOfStudy;
+        end
+        
+        %% Subject
+        [data, subjectId, naming, errMsg] = ResolveSubject(data, info.sSubject, naming);
+        if ~isempty(errMsg)
+            return;
+        end
+        isEmptyRoom = strcmp(info.sSubject.Name, 'sub-emptyroom') || ...
+                      (~isempty(emptyRoomKeywords) && containsKeyword(lower(info.SessionName), emptyRoomKeywords));
+        if isEmptyRoom
+            % Empty room recordings are stored in sub-emptyroom, with the real subject in the "acq" entity
+            bidsSubjectId = 'emptyroom';
+        else
+            bidsSubjectId = subjectId;
+        end
+        iSub = FindNodeById(plan.Subjects, bidsSubjectId);
+        if isempty(iSub)
+            subLabel = FormatId(bidsSubjectId, naming.SubScheme, 'sub');
+            % Last numbered session already in the subject folder
+            lastSesNum = 0;
+            if ~isEmptyRoom && naming.SesScheme >= 0
+                lastSesNum = GetLastId(bst_fullfile(outputFolder, subLabel), 'ses');
+            end
+            if isEmptyRoom
+                sSubjectAnat = [];
+            else
+                sSubjectAnat = info.sSubject;
+            end
+            plan.Subjects{end + 1} = struct('Id', bidsSubjectId, 'Label', subLabel, 'sSubject', sSubjectAnat, ...
+                'IsEmptyRoom', isEmptyRoom, 'LastSesNum', lastSesNum, 'Sessions', {{}});
+            iSub = length(plan.Subjects);
+        end
+        sub = plan.Subjects{iSub};
+        
+        %% Session and run index
+        if isEmptyRoom
+            [data, sessionId, runId] = ResolveEmptyRoomSession(data, subjectId, info);
+        else
+            [data, sessionId, runId, sub.LastSesNum, errMsg] = ResolveSession(data, subjectId, info, naming.SesScheme, sub.LastSesNum);
+            if ~isempty(errMsg)
+                return;
+            end
+        end
+        iSes = FindNodeById(sub.Sessions, sessionId);
+        if isempty(iSes)
+            sesLabel = FormatId(sessionId, naming.SesScheme, 'ses');
+            sub.Sessions{end + 1} = struct('Id', sessionId, 'Label', sesLabel, ...
+                'Prefix', [sub.Label '_' sesLabel], 'Runs', {{}});
+            iSes = length(sub.Sessions);
+        end
+        ses = sub.Sessions{iSes};
+        
+        %% Run
+        entities = '';
+        if isEmptyRoom && ~isempty(subjectId)
+            entities = ['_acq-sub' FormatId(subjectId, naming.SubScheme)];
+        end
+        if ~isempty(runId) && ~isempty(FormatId(runId, naming.RunScheme))
+            entities = [entities '_run-' FormatId(runId, naming.RunScheme)];
+        end
+        sRun = struct('sInput',      sInputs(iInput), ...
+                      'sFile',       info.sFile, ...
+                      'DataMat',     info.DataMat, ...
+                      'Modalities',  {info.Modalities}, ...
+                      'DateOfStudy', info.DateOfStudy, ...
+                      'RunId',       runId, ...
+                      'TaskName',    GetTaskName(info.sFile, [ses.Prefix '_task-'], isEmptyRoom), ...
+                      'Entities',    entities);
+        
+        ses.Runs{end + 1} = sRun;
+        sub.Sessions{iSes} = ses;
+        plan.Subjects{iSub} = sub;
+        plan.nRuns = plan.nRuns + 1;
+    end
+end
+
+% Extract everything needed from an input. Returns [] if the file cannot be exported.
+function info = GetInputInfo(sInput)
+    info = [];
+    sStudy   = bst_get('Study', sInput.iStudy);
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    DataMat  = in_bst_data(sInput.FileName);
+    sFile    = DataMat.F;
+    
+    % Skip unsupported formats
+    modalities = GetModalities(sFile, sInput.ChannelTypes);
+    if isempty(modalities)
+        disp(['Skipping file "' sFile.filename '" due to unsupported format...']);
+        return;
+    end
+    % If BST/CTF binary file, find original raw file
+    if strcmpi(sFile.format, 'BST-BIN') && strcmpi(sFile.device, 'CTF')
+        origFile = ExtractOriginalBstFilename(DataMat);
+        if isempty(origFile)
+            disp(['Skipping file "' sFile.comment '" due to raw link no longer existing...']);
+            return;
+        end
+        disp(['Warning: File "', sFile.comment, '" already imported in binary format.', ...
+            10, '         Using raw link "', origFile, '" instead.']);
+        sFile.filename = origFile;
+    end
+    % Session name: name of the Brainstorm study
+    if strncmp(sStudy.Name, '@raw', 4)
+        sessionName = sStudy.Name(5:end);
+    else
+        sessionName = sStudy.Name;
+    end
+    
+    info = struct('sSubject',    sSubject, ...
+                  'DataMat',     DataMat, ...
+                  'sFile',       sFile, ...
+                  'Modalities',  {modalities}, ...
+                  'SessionName', sessionName, ...
+                  'DateOfStudy', ExtractAcquisitionTime(sFile, sInput.iStudy));
+end
+
+% Modalities recorded in a file. Currently one per file, with priority MEG > EEG > NIRS.
+% Returns {} if not supported. (Simultaneous recordings could return several here.)
+function modalities = GetModalities(sFile, channelTypes)
+    isMeg  = strcmpi(sFile.device, 'CTF') || strcmpi(sFile.device, 'Neuromag');
+    isEeg  = strncmpi(sFile.format, 'EEG-', 4) || ismember('EEG', channelTypes);
+    isNirs = ismember('NIRS', channelTypes);
+    if isMeg
+        modalities = {'meg'};
+    elseif isEeg
+        modalities = {'eeg'};
+    elseif isNirs
+        modalities = {'nirs'};
+    else
+        modalities = {};
+    end
+end
+
+% Find the BIDS subject for a Brainstorm subject, create it in the mapping if new
+function [data, subjectId, naming, errMsg] = ResolveSubject(data, sSubject, naming)
+    errMsg = '';
+    % Already exported
+    subjectId = GetSubjectId(data, sSubject.Name);
+    if ~isempty(subjectId)
+        return;
+    end
+    % Subject names formatted as "sub-<n>"
+    if strncmp(sSubject.Name, 'sub-', 4) && length(sSubject.Name) > 5
+        if naming.SubScheme == -1
+            subjectId = sSubject.Name(5:end);
+            data = AddSubject(data, sSubject.Name, subjectId);
+            return;
+        else
+            disp('Warning: BIDS-formatted subject name detected, but numbered index subject names selected. A new index will be assigned. Select custom names to avoid this.');
+        end
+    end
+    % New subject
+    if naming.SubScheme == -1
+        % Char-based naming scheme
+        subjectId = FormatId(sSubject.Name, naming.SubScheme);
+    else
+        % Number-based naming scheme, increment from previous
+        subjectId = naming.LastSub + 1;
+        maxSubjects = power(10, naming.SubScheme);
+        if naming.SubScheme > 1 && subjectId >= maxSubjects
+            errMsg = ['Exceeded maximum number of subjects supported by your naming scheme (' num2str(maxSubjects) ').'];
+            return;
+        end
+        naming.LastSub = subjectId;
+    end
+    data = AddSubject(data, sSubject.Name, subjectId);
+end
+
+% Find the BIDS session and run index for a Brainstorm study, create them in the mapping if new
+function [data, sessionId, runId, lastSesNum, errMsg] = ResolveSession(data, subjectId, info, sesScheme, lastSesNum)
+    errMsg = '';
+    sessionName = info.SessionName;
+
+    % Session names formatted as "<subject>_ses-<id>_..."
+    subLen = length(info.sSubject.Name);
+    if length(sessionName) > (subLen + 6) && strncmp(sessionName(subLen+6:end), 'ses-', 4)  
+        tokens = regexp(sessionName, '_ses-(\w+)_', 'tokens', 'once');
+        if ~isempty(tokens)
+            sessionName = tokens{1};
+        end
+    end
+
+    % Already exported
+    [sessionId, runId] = GetSessionId(data, subjectId, sessionName);
+    if ~isempty(sessionId)
+        return;
+    end
+
+    % New session
+    if sesScheme == -1
+        % Char-based naming scheme
+        sessionId = FormatId(sessionName, sesScheme);
+    elseif sesScheme == -2
+        % Date-based naming scheme
+        sessionId = datestr(info.DateOfStudy, 'yyyymmdd');
+    else
+        % Number-based naming scheme, increment from previous
+        sessionId = lastSesNum + 1;
+        maxSessions = power(10, sesScheme);
+        if sesScheme > 1 && sessionId >= maxSessions
+            errMsg = ['Exceeded maximum number of sessions supported by your naming scheme (' num2str(maxSessions) ').'];
+            return;
+        end
+        lastSesNum = sessionId;
+    end
+    [data, runId] = AddSession(data, subjectId, sessionName, sessionId);
+end
+
+% Empty room recordings: the session is always the acquisition date.
+% The mapping is stored under the real subject (subjectId).
+function [data, sessionId, runId] = ResolveEmptyRoomSession(data, subjectId, info)
+    [sessionId, runId] = GetSessionId(data, subjectId, info.SessionName);
+    if isempty(sessionId)
+        sessionId = datestr(info.DateOfStudy, 'yyyymmdd');
+        [data, runId] = AddSession(data, subjectId, info.SessionName, sessionId);
+    end
+end
+
+% Index of the node with a given Id in a cell array of subjects or sessions
+function iNode = FindNodeById(nodes, id)
+    iNode = [];
+    for i = 1:length(nodes)
+        if SameIds(nodes{i}.Id, id)
+            iNode = i;
+            return;
+        end
+    end
+end
+
+function taskName = GetTaskName(sFile, prefixTask, isEmptyRoom)
+    if isEmptyRoom
+        taskName = 'noise';
+        return;
+    end
+    taskName = [];
+    [rawFolder, rawName] = fileparts(sFile.filename); %#ok<ASGLU>
+    % File already named following the BIDS convention
+    if strncmp(rawName, prefixTask, length(prefixTask))
+        rawNameUnprefixed = rawName(length(prefixTask) + 1:end);
+        endTask = strfind(rawNameUnprefixed, '_');
+        if ~isempty(endTask)
+            taskName = rawNameUnprefixed(1:endTask(1) - 1);
+        end
+    end
+    % Find task name from format specific metadata if possible
+    if isempty(taskName)
+        if strcmpi(sFile.device, 'CTF')
+            taskName = ExtractCtfTaskname(sFile);
+        elseif strcmpi(sFile.device, 'Neuromag')
+            taskName = ExtractFifTaskname(sFile);
+        else
+            tokens = regexp(rawName, 'task-([a-zA-Z0-9]+)', 'tokens');
+            if ~isempty(tokens)
+                taskName = tokens{1}{1};
+            end
+        end
+    end
+    % Otherwise, extract task name from condition
+    if isempty(taskName)
+        taskName = regexprep(rawName, '[^a-zA-Z0-9]', '');
+    end
+end
+
+
+%% =================================================================================
+%  === EXPORT: ONE RECORDING {subject, session, run, modality} =====================
+%  =================================================================================
+function EnsureDir(folder)
+    if exist(folder, 'dir') ~= 7
+        mkdir(folder);
+    end
+end
+
+% Paths and file names of a recording:
+%   <session>/<modality>/<prefix>_task-<task><entities>_<modality>.<ext>
+function bids = GetBidsPaths(sessionFolder, prefix, sRun, modality)
+    bids = struct();
+    bids.SessionFolder = sessionFolder;
+    bids.DataFolder    = bst_fullfile(sessionFolder, modality);
+    bids.Prefix        = prefix;
+    bids.BaseName      = [prefix '_task-' sRun.TaskName sRun.Entities];
+    bids.NewName       = [bids.BaseName '_' modality];
+    EnsureDir(bids.DataFolder);
+end
+
+function ExportAnatomy(sSubject, sessionFolder, prefix, defaceMri, overwrite)
+    if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
+        return;
+    end
+    anatFolder = bst_fullfile(sessionFolder, 'anat');
+    EnsureDir(anatFolder);
+    mriFile = bst_fullfile(anatFolder, [prefix '_T1w.nii']);
+    if (exist(mriFile, 'file') ~= 2 && exist([mriFile '.gz'], 'file') ~= 2) || overwrite
+        if defaceMri
+            origMri = GetDefacedMri(sSubject);
+        else
+            origMri = sSubject.Anatomy(1).FileName;
+        end
+        export_mri(origMri, mriFile, 'bids');
+        mriGzFile = gzip(mriFile);
+        if ~isempty(mriGzFile)
+            delete(mriFile);
+        end
+    end
+end
+
+% Trigger channels and event names, listed in the README
+function Summary = UpdateSummary(Summary, ChannelMat, sFile)
+    iStimChans = find(strcmpi('stim', {ChannelMat.Channel.Type}));
+    for iStimChan = 1:length(iStimChans)
+        chan = ChannelMat.Channel(iStimChans(iStimChan)).Name;
+        if ~any(strcmpi(chan, Summary.StimChannelNames))
+            Summary.StimChannelNames{end + 1} = chan;
+        end
+    end
+    for iEvent = 1:length(sFile.events)
+        event = sFile.events(iEvent).label;
+        if ~any(strcmpi(event, Summary.EventNames))
+            Summary.EventNames{end + 1} = event;
+        end
+    end
+end
+
+%% ===== MEG =====
+function ExportMeg(sRun, ChannelMat, bids, settings)
+    sFile = sRun.sFile;
+    isCtf = strcmpi(sFile.device, 'CTF');
+    [rawFolder, rawName, rawExt] = fileparts(sFile.filename); %#ok<ASGLU>
+    if isCtf
+        rawExt = '.ds';
+    end
+    newPath = bst_fullfile(bids.DataFolder, [bids.NewName, rawExt]);
+    if exist(newPath, 'file') && ~settings.Overwrite
+        return;
+    end
+    [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(ChannelMat);
+    
+    % Data files
+    if isCtf
+        % Rename internal DS files
+        dsFolder = fileparts(sFile.filename);
+        tempPath = bst_fullfile(bids.DataFolder, [rawName, rawExt]);
+        file_copy(dsFolder, tempPath);
+        if ~strcmp(tempPath, newPath)
+            ctf_rename_ds(tempPath, newPath, []);
+        end
+        % Save Polhemus file
+        if hasHeadPoints
+            posFile = bst_fullfile(bids.DataFolder, [bids.Prefix '_headshape.pos']);
+            out_channel_pos(sRun.sInput.ChannelFile, posFile);
+        end
+        % Remove internal Polhemus files
+        delete(bst_fullfile(newPath, '*.pos'));
+    else
+        file_copy(sFile.filename, newPath);
+    end
+    
+    % Sidecar fields
+    metadata = GetCommonMetadata(settings.SidecarExtra.meg, sRun, settings);
+    metadata = addField(metadata, 'DewarPosition', valueOrNA(settings.Options.DewarPosition));
+    metadata = addField(metadata, 'DigitizedLandmarks', bool2str(hasLandmarks));
+    metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
+    WriteRecordingFiles(sRun, ChannelMat, 'meg', newPath, metadata, bids);
+end
+
+%% ===== EEG =====
+function ExportEeg(sRun, ChannelMat, bids, settings)
+    sFile = sRun.sFile;
+    [rawFolder, rawName, rawExt] = fileparts(sFile.filename);
+    isEegBids = ismember(sFile.format, {'EEG-EDF', 'EEG-BRAINAMP', 'EEG-EEGLAB', 'EEG-BDF'});
+    if ~isEegBids
+        rawExt = '.eeg';
+    end
+    newPath = bst_fullfile(bids.DataFolder, [bids.NewName, rawExt]);
+    if exist(newPath, 'file') && ~settings.Overwrite
+        return;
+    end
+    
+    % Data files
+    if ~isEegBids
+        % For EEG-BIDS, only a handful of formats are supported.
+        % Convert unsupported formats to BrainVision.
+        disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to BrainVision EEG/VHDR.']);
+        export_data(sRun.sInput.FileName, [], newPath, 'EEG-BRAINAMP');
+    else
+        file_copy(sFile.filename, newPath);
+        % Copy BrainVision meta-data files (.vhdr, .vmrk)
+        if strcmp(sFile.format, 'EEG-BRAINAMP')
+            VhdrFile = bst_fullfile(rawFolder, [rawName, '.vhdr']);
+            if file_exist(VhdrFile)
+                file_copy(VhdrFile, bst_fullfile(bids.DataFolder, [bids.NewName, '.vhdr']));
+            end
+            VmrkFile = bst_fullfile(rawFolder, [rawName, '.vmrk']);
+            if file_exist(VmrkFile)
+                file_copy(VmrkFile, bst_fullfile(bids.DataFolder, [bids.NewName, '.vmrk']));
+            end
+        end
+    end
+    
+    % Sidecar fields
+    OPTIONS = settings.Options;
+    metadata = GetCommonMetadata(settings.SidecarExtra.eeg, sRun, settings);
+    metadata = addField(metadata, 'EEGReference', valueOrNA(OPTIONS.EegReference));
+    metadata = addIfNotEmpty(metadata, 'EEGGround', OPTIONS.EegGround);
+    metadata = addIfNotEmpty(metadata, 'CapManufacturer', OPTIONS.EegCapManufacturer);
+    metadata = addIfNotEmpty(metadata, 'CapManufacturersModelName', OPTIONS.EegCapModel);
+    WriteRecordingFiles(sRun, ChannelMat, 'eeg', newPath, metadata, bids);
+end
+
+%% ===== NIRS =====
+function ExportNirs(sRun, ChannelMat, bids, settings)
+    newPath = bst_fullfile(bids.DataFolder, [bids.NewName, '.snirf']);
+    if exist(newPath, 'file') && ~settings.Overwrite
+        return;
+    end
+    
+    % Data files
+    export_data(sRun.sInput.FileName, [], newPath, 'NIRS-SNIRF');
+    export_channel(sRun.sInput.ChannelFile, bst_fullfile(bids.DataFolder, [bids.Prefix, '_optodes.tsv']), 'BIDS-NIRS-ALS-MM', 0);
+    out_channel_bids_nirs(sRun.sInput.ChannelFile, bst_fullfile(bids.DataFolder, [bids.BaseName, '_channels.tsv']), sRun.DataMat.DisplayUnits, sRun.DataMat.F.channelflag);
+    
+    % Sidecar fields
+    OPTIONS = settings.Options;
+    [isrcs, idets] = nst_unformat_channels({ChannelMat.Channel(strcmp({ChannelMat.Channel.Type}, 'NIRS')).Name});
+    metadata = GetCommonMetadata(settings.SidecarExtra.nirs, sRun, settings);
+    metadata = addField(metadata, 'NIRSChannelCount',       length(isrcs));
+    metadata = addField(metadata, 'NIRSSourceOptodeCount',  length(unique(isrcs)));
+    metadata = addField(metadata, 'NIRSDetectorOptodeCount', length(unique(idets)));
+    metadata = addField(metadata, 'SourceType',   valueOrNA(OPTIONS.NirsSourceType));
+    metadata = addField(metadata, 'DetectorType', valueOrNA(OPTIONS.NirsDetectorType));
+    metadata = addIfNotEmpty(metadata, 'CapManufacturer', OPTIONS.NirsCapManufacturer);
+    metadata = addIfNotEmpty(metadata, 'CapManufacturersModelName', OPTIONS.NirsCapModel);
+
+    sData = in_bst_data(sRun.sInput.FileName, 'Time');
+    metadata = addField(metadata, 'RecordingDuration', sData.Time(end) - sData.Time(1));
+
+    WriteRecordingFiles(sRun, ChannelMat, 'nirs', newPath, metadata, bids);
+end
+
+%% ===== FILES COMMON TO ALL MODALITIES =====
+% Sidecar fields common to all modalities, on top of the additional fields entered in the panel
+function metadata = GetCommonMetadata(extraMetadata, sRun, settings)
+    metadata = extraMetadata;
+    metadata = addField(metadata, 'TaskName', sRun.TaskName);
+    metadata = addField(metadata, 'Manufacturer', sRun.sFile.device);
+    metadata = addField(metadata, 'SamplingFrequency', sRun.sFile.prop.sfreq);
+    metadata = addField(metadata, 'PowerLineFrequency', settings.PowerLine);
+end
+
+% Fields extracted from the original recording, depending on the device
+function metadata = GetDeviceMetadata(sFile)
+    if strcmpi(sFile.device, 'CTF')
+        metadata = ExtractCtfMetadata(fileparts(sFile.filename));
+    elseif strcmpi(sFile.device, 'Neuromag')
+        metadata = ExtractFifMetadata(sFile.filename);
+    else
+        metadata = struct('SoftwareFilters', 'n/a');
+    end
+end
+
+% Fiducials (and NIRS) coordinate system
+function coorddata = GetCoordSystem(ChannelMat, modality)
+    SCSfields = fieldnames(ChannelMat.SCS);
+    field_to_remove = setdiff(SCSfields, {'LPA', 'NAS', 'RPA'});
+    SCSprint = rmfield(ChannelMat.SCS, field_to_remove);
+    description = 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html';
+    
+    coorddata = struct();
+    coorddata = addField(coorddata, 'FiducialsCoordinates', SCSprint);
+    coorddata = addField(coorddata, 'FiducialsCoordinateUnits', 'm');
+    coorddata = addField(coorddata, 'FiducialsCoordinateSystem', 'CTF');
+    coorddata = addField(coorddata, 'FiducialsCoordinateSystemDescription', description);
+    coorddata = addField(coorddata, 'AnatomicalLandmarkCoordinates', SCSprint);
+    coorddata = addField(coorddata, 'AnatomicalLandmarkCoordinateUnits', 'm');
+    coorddata = addField(coorddata, 'AnatomicalLandmarkCoordinateSystem', 'CTF');
+    coorddata = addField(coorddata, 'AnatomicalLandmarkCoordinateSystemDescription', description);
+    if strcmp(modality, 'nirs')
+        coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'CTF'); % Make sure it isnt CapRAS
+        coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', description);
+        coorddata = addField(coorddata, 'NIRSCoordinateUnits', 'mm');
+    end
+end
+
+% Sidecar JSON, scans.tsv, events.tsv and coordsystem.json
+function WriteRecordingFiles(sRun, ChannelMat, modality, dataPath, metadata, bids)
+    % Device-specific fields, not overwriting the ones defined above
+    metadata = struct_copy_fields(metadata, GetDeviceMetadata(sRun.sFile), 0);
+    % Create JSON sidecar
+    WriteJson(bst_fullfile(bids.DataFolder, [bids.NewName '.json']), metadata);
+    % Create session TSV file
+    CreateSessionTsv(bst_fullfile(bids.SessionFolder, [bids.Prefix '_scans.tsv']), dataPath, sRun.DateOfStudy);
+    % Create event TSV file
+    out_events_bids(sRun.sFile, bst_fullfile(bids.DataFolder, [bids.BaseName, '_events.tsv']));
+    % Create coordinates JSON
+    WriteJson(bst_fullfile(bids.DataFolder, [bids.Prefix '_coordsystem.json']), GetCoordSystem(ChannelMat, modality));
+end
+
+
+%% =================================================================================
+%  === MAPPING OF PREVIOUS EXPORTS, IDENTIFIERS ====================================
+%  =================================================================================
 function string = zero_prefix(num, num_digits)
     string = num2str(num);
     while length(string) < num_digits
@@ -642,10 +880,10 @@ function sessionId = GetFirstSessionId(data, subjectId)
 end
 
 function same = SameIds(id1, id2)
-    if ischar(id1)
-        same = strcmp(id1, id2);
+    if ischar(id1) || ischar(id2)
+        same = ischar(id1) && ischar(id2) && strcmp(id1, id2);
     else
-        same = id1 == id2;
+        same = isequal(id1, id2);
     end
 end
 
@@ -726,40 +964,80 @@ function id = GetLastId(parentFolder, prefix)
     end
 end
 
-function CreateMegJson(jsonFile, metadata)
+function WriteJson(jsonFile, metadata)
     fid = fopen(jsonFile, 'wt');
+
+    if fid < 0
+        error('Unable to write %s', jsonFile);
+    end
+
     jsonText = bst_jsonencode(metadata);
-    fprintf(fid, strrep(jsonText, '%', '%%'));
+    fprintf(fid, '%s', jsonText);
     fclose(fid);
 end
 
-function CreateDatasetDescription(parentFolder, overwrite, description, authors)
-    if nargin < 3
+function CreateDatasetDescription(parentFolder, overwrite, description, OPTIONS, FileType)
+    if nargin < 3 || isempty(description)
         description = struct();
     end
-
-    jsonFile = bst_fullfile(parentFolder, 'dataset_description.json');
-    if exist(jsonFile, 'file') == 2 && ~overwrite
-        return;
+    if nargin < 5
+        FileType = 'raw';
     end
-    
+    jsonFile = bst_fullfile(parentFolder, 'dataset_description.json');
     ProtocolInfo = bst_get('ProtocolInfo');
-    description = addField(description, 'Name', ProtocolInfo.Comment);
-    description = addField(description, 'BIDSVersion', '1.1.1');
-    description = addField(description, 'Authors', strtrim(str_split(authors,',')));
+
+    % Fields edited in the panel
+    if ~isempty(OPTIONS.ProjName)
+        datasetName = OPTIONS.ProjName;
+    else
+        datasetName = ProtocolInfo.Comment;
+    end
+    description = addField(description, 'Name', datasetName);
+    description = addField(description, 'BIDSVersion', '1.3.0');
+    description = addField(description, 'DatasetType', FileType);
+    description = addField(description, 'Authors', strtrim(str_split(OPTIONS.Authors, ',')));
+    description = addIfNotEmpty(description, 'License', OPTIONS.License);
+    description = addIfNotEmpty(description, 'DatasetDOI', OPTIONS.DatasetDOI);
+    description = addIfNotEmpty(description, 'HowToAcknowledge', OPTIONS.HowToAcknowledge);
+    description = addIfNotEmpty(description, 'Acknowledgements', OPTIONS.Acknowledgements);
+    description = addIfNotEmpty(description, 'Funding', SplitLines(OPTIONS.Funding));
+    description = addIfNotEmpty(description, 'EthicsApprovals', SplitLines(OPTIONS.Ethics));
+    description = addIfNotEmpty(description, 'ReferencesAndLinks', SplitLines(OPTIONS.References));
     
-    fid = fopen(jsonFile, 'wt');
-    jsonText = bst_jsonencode(description);
-    fprintf(fid, jsonText);
-    fclose(fid);
+    % GeneratedBy: keep the entries of other software, update the Brainstorm one
+    generatedBy = {};
+    if isfield(description, 'GeneratedBy') && ~isempty(description.GeneratedBy)
+        prev = description.GeneratedBy;
+        if isstruct(prev)
+            prev = num2cell(prev(:)');
+        elseif ~iscell(prev)
+            prev = {};
+        end
+        for iPrev = 1:length(prev)
+            if ~(isstruct(prev{iPrev}) && isfield(prev{iPrev}, 'Name') && strcmp(prev{iPrev}.Name, 'Brainstorm3'))
+                generatedBy{end + 1} = prev{iPrev};
+            end
+        end
+    end
+    generatedBy{end + 1} = struct('Name', 'Brainstorm3', ...
+                                  'Version', bst_get('Version').Version, ...
+                                  'CodeURL', 'https://github.com/brainstorm-tools/brainstorm3');
+    description.GeneratedBy = generatedBy;
+    
+    % Existing file: only rewrite it if overwriting, or if its content changed
+    if exist(jsonFile, 'file') == 2 && ~overwrite
+        try
+            if isequal(bst_jsondecode(fileread(jsonFile)), bst_jsondecode(bst_jsonencode(description)))
+                return;
+            end
+        catch
+        end
+    end
+    WriteJson(jsonFile, description);
 end
 
 function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq, AllChannelNames, AllEventNames)
-    % Skip if it exists and we're not overwriting
     txtFile = bst_fullfile(parentFolder, 'README');
-    if exist(txtFile, 'file') == 2 && ~overwrite
-        return;
-    end
 
     % Default Project name/ID: Protocol name
     ProtocolInfo = bst_get('ProtocolInfo');
@@ -776,6 +1054,22 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
     end
     if isempty(OPTIONS.Categories)
         OPTIONS.Categories = 'n/a';
+    end
+    
+    % Existing README: only rewrite it if overwriting, or if the project fields changed in the panel
+    if exist(txtFile, 'file') == 2 && ~overwrite
+        prev = panel_export_bids('ParseReadme', txtFile);
+        if isempty(prev)
+            return;
+        elseif prev.IsForeign
+            % README not written by Brainstorm: the whole text is the project description
+            if strcmp(prev.ProjDesc, strtrim(OPTIONS.ProjDesc))
+                return;
+            end
+        elseif strcmp(prev.ProjName, strtrim(OPTIONS.ProjName)) && strcmp(prev.ProjID, strtrim(OPTIONS.ProjID)) && ...
+               strcmp(prev.ProjDesc, strtrim(OPTIONS.ProjDesc)) && strcmp(prev.Categories, strtrim(OPTIONS.Categories))
+            return;
+        end
     end
     
     % Default acquisition dates: n/a
@@ -809,20 +1103,21 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
     end
     
     % Create README file
+    txt = ['Project Title: ' OPTIONS.ProjName 10 ...
+           'Project ID: ' OPTIONS.ProjID 10 10 ...
+           'Expected experimentation period:' 10 ...
+           'Start date: ' firstAcq 10 ...
+           'End date: ' lastAcq 10 10 ...
+           'Project Description:' 10 ...
+           OPTIONS.ProjDesc 10 10 ...
+           'Participant categories:' 10 ...
+           OPTIONS.Categories 10 10 ...
+           'Trigger channels:' 10 ...
+           channels 10 ...
+           'Events:' 10 ...
+           events];
     fid = fopen(txtFile, 'wt');
-    fprintf(fid, ['Project Title: ' OPTIONS.ProjName 10]);
-    fprintf(fid, ['Project ID: ' OPTIONS.ProjID 10 10]);
-    fprintf(fid, ['Expected experimentation period:' 10]);
-    fprintf(fid, ['Start date: ' firstAcq 10]);
-    fprintf(fid, ['End date: ' lastAcq 10 10]);
-    fprintf(fid, ['Project Description:' 10]);
-    fprintf(fid, [OPTIONS.ProjDesc 10 10]);
-    fprintf(fid, ['Participant categories:' 10]);
-    fprintf(fid, [OPTIONS.Categories 10 10]);
-    fprintf(fid, ['Trigger channels:' 10]);
-    fprintf(fid, [channels 10]);
-    fprintf(fid, ['Events:' 10]);
-    fprintf(fid, events);
+    fprintf(fid, '%s', txt);
     fclose(fid);
 end
 
@@ -1127,4 +1422,41 @@ function defacedMri = GetDefacedMri(sSubject)
             defacedMri = sSubject.Anatomy(iAnatomy).FileName;
         end
     end
+end
+
+% Metadata options: panel values, or metadata of the existing dataset if the panel was not
+% validated for this output folder (keeps the existing metadata identical by default)
+function OPTIONS = LoadMetadataOptions(sProcess, outputFolder)
+    OPTIONS = panel_export_bids('GetOptions');
+    panelValue = [];
+    if isfield(sProcess.options, 'edit') && isfield(sProcess.options.edit, 'Value')
+        panelValue = sProcess.options.edit.Value;
+    end
+    if isstruct(panelValue) && ~isempty(panelValue)
+        OPTIONS = struct_copy_fields(OPTIONS, panelValue, 1);
+    elseif ~strcmp(OPTIONS.PreparedFor, outputFolder)
+        [existing, nFound] = panel_export_bids('ReadExistingMetadata', outputFolder);
+        if nFound > 0
+            disp('BIDS> Using the metadata found in the existing output folder. Click "Edit..." to modify it.');
+            OPTIONS = struct_copy_fields(panel_export_bids('GetDefaultOptions'), existing, 1);
+        end
+    end
+end
+
+function myStruct = addIfNotEmpty(myStruct, field, value)
+    if ~isempty(value)
+        myStruct = addField(myStruct, field, value);
+    end
+end
+
+function value = valueOrNA(value)
+    if isempty(value)
+        value = 'n/a';
+    end
+end
+
+% Split a multi-line text in a cell array of non-empty lines
+function lines = SplitLines(txt)
+    lines = strtrim(regexp(txt, '\r?\n', 'split'));
+    lines(cellfun(@isempty, lines)) = [];
 end
