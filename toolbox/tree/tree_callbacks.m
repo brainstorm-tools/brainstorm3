@@ -3336,9 +3336,6 @@ function PetImportProcess_Callback(PetFile)
 end
 
 
-
-
-
 %% ===== PET PVC CALLBACK =====
 function PetPvc_Callback(PetFile, sSubject)
     % Get reference MRI
@@ -3359,19 +3356,19 @@ function PetPvc_Callback(PetFile, sSubject)
     if strcmpi(res, 'GTM'), method = 'gtm'; else, method = 'mg'; end
     % Default FWHM: scanner resolution stored at import (6 mm if unknown) + recorded smoothing
     PET = [];
-    warning('off', 'MATLAB:load:variableNotFound');
-    w = load(file_fullpath(PetFile), 'PET');
-    warning('on', 'MATLAB:load:variableNotFound');
-    if isfield(w, 'PET'), PET = w.PET; end
+    w = load(file_fullpath(PetFile), 'Header');
+    if isfield(w.Header, 'Pet'), PET = w.Header.Pet; end
     [~, fwhmSrc] = pet_helper('PsfFwhm', PET);
-    [scanFwhm, scanSrc, isKnown] = pet_helper('PsfFwhm', PetWithoutSmoothing(PET));
+    % Remove recorded smoothing metadata to display the scanner resolution alone
+    PET.SmoothFwhm = [];
+    [scanFwhm, scanSrc, isKnown] = pet_helper('PsfFwhm', PET);
     if isKnown
         strScanner = ['Scanner: <B>' scanSrc '</B><BR>'];
     else
         strScanner = ['<FONT color="#C00000"><B>Scanner not identified from the PET metadata.</B><BR>' ...
                       sprintf('%.1f mm is a generic default, not the resolution of your scanner.<BR>', scanFwhm) ...
                       'A PSF larger than the true resolution over-corrects (negative regional values).<BR>' ...
-                      'Enter the PSF FWHM of your scanner and reconstruction.</FONT><BR>'];
+                      'Enter the PSF FWHM of your scanner and reconstruction.</FONT><BR><BR>'];
     end
     res = java_dialog('input', ...
         ['<HTML>' strScanner ...
@@ -3391,23 +3388,15 @@ function PetPvc_Callback(PetFile, sSubject)
     end
     % Run PVC
     bst_progress('start', 'PET PVC', 'Running partial volume correction...');
-    [MriFilePvc, errMsg, ~, regTable] = pet_pvc(PetFile, MriFileRef, fwhm, struct('method', method));
+    [~, errMsg, ~, regTable] = pet_pvc(PetFile, MriFileRef, fwhm, struct('method', method));
     bst_progress('stop');
     if ~isempty(errMsg)
         bst_error(errMsg, 'PET PVC');
         return;
     end
-    disp(['BST> PVC corrected PET saved as: ' MriFilePvc]);
     % GTM: regional values in the command window
     if ~isempty(regTable)
         disp(struct2table(regTable));
-    end
-end
-
-% PET metadata without the recorded smoothing (to display the scanner resolution alone)
-function PET = PetWithoutSmoothing(PET)
-    if isstruct(PET) && isfield(PET, 'SmoothFwhm')
-        PET.SmoothFwhm = [];
     end
 end
 
