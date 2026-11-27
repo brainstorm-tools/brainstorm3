@@ -124,17 +124,14 @@ if ~isfield(pvcOpts, 'wmcsfMethod') || isempty(pvcOpts.wmcsfMethod), pvcOpts.wmc
 if ~isfield(pvcOpts, 'wmcsfThresh') || isempty(pvcOpts.wmcsfThresh), pvcOpts.wmcsfThresh = 0.5;         end
 
 % ===== CHECK PLUGINS =====
-% SPM12: Install if needed, then load
-[isOk, errInstall] = bst_plugin('Install', 'spm12', 1);
-if ~isOk
-    errMsg = ['SPM12 plugin is required: ' errInstall];
+% SPM12: Ensure plugin
+[ensureSpmRes, errMsg] = bst_plugin('Ensure', 'spm12');
+if ~isempty(errMsg)
     return;
 end
-bst_plugin('Load', 'spm12');
-% PETPVE12: Install if needed, then load
-[isOk, errInstall] = bst_plugin('Install', 'petpve12', 1);
-if ~isOk
-    errMsg = ['PETPVE12 plugin is required: ' errInstall];
+% PETPVE12: Ensure plugin
+[ensurePvcRes, errMsg] = bst_plugin('Ensure', 'petpve12');
+if ~isempty(errMsg)
     return;
 end
 bst_plugin('Load', 'petpve12');
@@ -286,6 +283,14 @@ catch ME
     if exist('TmpDir', 'var') && ~isempty(TmpDir) && file_exist(TmpDir)
         file_delete(TmpDir, 1, 1);
     end
+end
+
+% ===== UNLOAD PLUGINS =====
+if ensureSpmRes > 0
+    bst_plugin('Unload', 'spm12');
+end
+if ensurePvcRes > 0
+    bst_plugin('Unload', 'petpve12');
 end
 
 % Stop progress bar if we started it
