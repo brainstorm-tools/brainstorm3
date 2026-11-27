@@ -101,8 +101,11 @@ for i = 1:length(iProtocols)
         GlobalData.DataBase.ProtocolStudies(iProtocols(i))    = ProtocolMat.ProtocolStudies;
         GlobalData.DataBase.isProtocolLoaded(iProtocols(i))   = 1;
         GlobalData.DataBase.isProtocolModified(iProtocols(i)) = 0;
-        % Refresh tree
-        panel_protocols('UpdateTree');
+        
+        if bst_get('isGUI')
+            % Refresh tree
+            panel_protocols('UpdateTree');
+        end
     end
 end
 
