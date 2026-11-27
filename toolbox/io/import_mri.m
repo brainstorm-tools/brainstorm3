@@ -192,10 +192,6 @@ end
 if isPet && ~iscell(MriFile)
     sMri.Header.Pet = pet_helper('ReadMetadata', MriFile, sMri);
     sMri = bst_history('add', sMri, 'import', ['PET scanner resolution (PSF FWHM): ' sMri.Header.Pet.PsfSource]);
-    if ~sMri.Header.Pet.PsfKnown
-        disp(['BST> WARNING: PET scanner not identified from the metadata. Partial volume correction needs' 10 ...
-              'BST>          the scanner resolution: enter its PSF FWHM, the generic default is a guess.']);
-    end
 end
 
 
