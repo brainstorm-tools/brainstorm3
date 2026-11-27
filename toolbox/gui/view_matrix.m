@@ -46,7 +46,7 @@ end
 if (nargin < 2) || isempty(DisplayMode)
     DisplayMode = 'timeseries';
 end
-if strcmpi(DisplayMode, 'timeseries') && isempty(sMat.Time)
+if iscell(sMat.Value) || isempty(sMat.Time)
     DisplayMode = 'table';
 end
 iDS = [];
@@ -181,8 +181,12 @@ switch lower(DisplayMode)
     case 'table'
         % Progress bar
         bst_progress('start', 'View data as table', 'Loading data...');
-        % Values as cell of char verctors
-        ValueCell = reshape(cellstr(num2str(Value(:))), size(Value,1), size(Value,2));
+        if iscell(Value)
+            ValueCell = Value;
+        else
+            % Values as cell of char verctors
+            ValueCell = reshape(cellstr(num2str(Value(:))), size(Value,1), size(Value,2));
+        end
         % Define column headers
         if (size(sMat.Description,2) == size(Value,2))
             tmp11 = sMat.Description{1,1};
