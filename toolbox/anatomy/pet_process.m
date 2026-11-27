@@ -191,7 +191,7 @@ try
 
     % Refresh tree and save database
     panel_protocols('UpdateNode', 'Subject', iSubject);
-    panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
+    panel_protocols('SelectNode', [], 'volpet', iSubject, iAnatomy);
     db_save();
 
     % --- Overlay processed PET on subject's default MRI ---

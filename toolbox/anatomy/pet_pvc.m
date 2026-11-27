@@ -505,7 +505,7 @@ function MriFileOut = SavePetVolume(sMriOut, PetFile, fileTag)
     bst_set('Subject', iSubject, sSubject);
     % Refresh tree
     panel_protocols('UpdateNode', 'Subject', iSubject);
-    panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
+    panel_protocols('SelectNode', [], 'volpet', iSubject, iAnatomy);
     db_save();
 end
 
