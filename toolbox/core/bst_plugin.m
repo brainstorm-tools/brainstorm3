@@ -294,6 +294,14 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'bst_duneuro_meeg_win64.exe';
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'bin'};
+
+    % === FORWARD: DUNEURO DOCKER ===
+    PlugDesc(end+1)              = GetStruct('duneuro-docker');
+    PlugDesc(end).Version        = 'wip';
+    PlugDesc(end).Category       = 'Forward';
+    PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Duneuro';
+    PlugDesc(end).ImageSource    = ['ghcr.io/maltehoel/duneuro_in_docker_testing:' PlugDesc(end).Version];
+    PlugDesc(end).CompiledStatus = 1;
     
     % === INVERSE: BRAINENTROPY ===
     PlugDesc(end+1)              = GetStruct('brainentropy');

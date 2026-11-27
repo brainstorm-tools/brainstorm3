@@ -75,11 +75,22 @@ cfgDef.BstEegTransferFile = 'eeg_transfer.dat';
 cfgDef.BstMegTransferFile = 'meg_transfer.dat';
 cfgDef.BstEegLfFile       = 'eeg_lf.dat';
 cfgDef.BstMegLfFile       = 'meg_lf.dat';
-
 % [MEG computation Options]
 cfgDef.UseIntegrationPoint = 1; 
 cfgDef.EnableCacheMemory = 0;
 cfgDef.MegPerBlockOfSensor = 0; % ToDo
+% DN2026
+cfgDef.containerRunner    = 'docker'; % ToDo
+cfgDef.SrcModel2026       =  'multipolar_venant';  %  'multipolar_venant', 'local_subtraction', 'partial_integration'
+cfgDef.residual_reduction = '1e-16'; % for the transfer matrix
+[cfgDef.NbOfThread, cfgDef.NbOfThreadMax] = GetThreads();
+%From Malte: 
+% 1) a derivation of the EEG and MEG scaling factors to get the output in volt and tesla. The short version is the following:
+% If you measure distances in meter, conductivites in Siemens/meter, and dipole moments in Amperemeter, then the following setting
+% results in the duneuro EEG leadfied being given in volt and the duneuro MEG leadfield being given in tesla.
+cfgDef.eeg_scaling = '1e0'; % 
+cfgDef.meg_scaling = '1e-7'; %  
+ 
 % Use default values if not set
 if (nargin == 0) || isempty(cfg)
     cfg = cfgDef;
@@ -134,7 +145,15 @@ cfg = struct_copy_fields(cfg, cfgDef, 0);
 % fprintf(fid, 'reference  = %s\n',cfg.minifile.wrapper.outputtreecompare.reference);
 % fprintf(fid, 'type  = %s\n',cfg.minifile.wrapper.outputtreecompare.type);
 % fprintf(fid, 'absolute  = %s\n',cfg.minifile.wrapper.outputtreecompare.absolute);
+end
 
 
-
-
+%% ===== THREAD DETECTION FUNCTION =====
+function [nThreadOptimal,  nPhysical] = GetThreads()
+    try
+        nPhysical = feature('numcores');
+        nThreadOptimal  = max(1, round(nPhysical/2));
+    catch
+        nThreadOptimal = 1; % Safe fallback
+    end
+end
