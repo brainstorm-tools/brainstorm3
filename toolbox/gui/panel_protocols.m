@@ -950,6 +950,8 @@ function nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile )
                 nodeTypes = {'ptimefreq','pspectrum'}; 
             case 'tess'
                 nodeTypes = {'other'};
+            case 'subjectimage'
+                nodeTypes = {'anatomy', 'volatlas', 'volct', 'volpet'};
             otherwise
                 nodeTypes = {nodeTypes};
         end
