@@ -189,7 +189,7 @@ if isempty(selChannels)
         selChannels = setdiff(selChannels, iNoLoc);
     end
     if isempty(selChannels) && ~isempty(iNoLoc)
-        error('None of the channels have positions defined.');
+        error('None of the channels have positions defined for modality %s.', Modality);
     end
 end
 % Set figure selected sensors

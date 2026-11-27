@@ -309,6 +309,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
             SubjectMriFiles{iSubj}   = allMriFiles;
         % Check for multiple sessions
         elseif (length(sessFolders) > 1)
+            % This seems like leftover redundant code that can't be used anymore. If there is any
+            % subject seg, the first one only is grabbed above and noted in AnatDir, so this won't
+            % run even if there are multiple segmentations.
             % Check for multiple session segmentation
             isSessSeg = 1;
             for isess = 1:length(sessFolders)
@@ -318,6 +321,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     break;
                 end
             end
+            % Similarly, this won't run anymore, but it also overwrites for each session, so only
+            % the last segmentation would have been kept.
             % If there is one segmentation per session
             if isSessSeg
                 for isess = 1:length(sessFolders)
@@ -492,6 +497,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     errorMsg = import_anatomy_bv(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMriFid);
                 case 'CIVET'
                     errorMsg = import_anatomy_civet(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMriFid, 0);
+                case 'MiDeFace' % Keep to suppress error message
+                    % This is done later since we need the primary MRI to be imported to align the surface.
+                    % errorMsg = import_anatomy_mideface(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMri);
                 otherwise
                     errorMsg = ['Invalid file format: ' SubjectAnatFormat{iSubj}];
             end
@@ -518,7 +526,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
             % Compute additional files
             else
                 % If there was no segmentation imported before: normalize and create head surface
-                if isempty(SubjectAnatDir{iSubj})
+                if isempty(SubjectAnatDir{iSubj}) || strcmpi(SubjectAnatFormat{iSubj}, 'MiDeFace')
                     % Compute MNI normalization
                     switch (OPTIONS.MniMethod)
                         case 'maff8'
@@ -532,8 +540,15 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     if ~isempty(errMsg)
                         errorMsg = [errorMsg, 10, errMsg];
                     end
-                    % Generate head surface
-                    tess_isohead(iSubject, 10000, 0, 2);
+                    % Load or generate head surface
+                    if strcmpi(SubjectAnatFormat{iSubj}, 'MiDeFace')
+                        errMsg = import_anatomy_mideface(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMri);
+                        if ~isempty(errMsg)
+                            errorMsg = [errorMsg, 10, errMsg];
+                        end
+                    else
+                        tess_isohead(iSubject, 15000, 0, 0);
+                    end
                 else
                     MrisToRegister{end+1} = BstMriFile;
                 end
@@ -1285,6 +1300,12 @@ function [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName)
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(TestFile));
             AnatFormat = 'FreeSurfer';
+            return;
+        end
+        TestFile = file_find(subDir(1).folder, 'head.surf');
+        if ~isempty(TestFile)
+            AnatDir = bst_fileparts(bst_fileparts(TestFile));
+            AnatFormat = 'MiDeFace';
             return;
         end
     end

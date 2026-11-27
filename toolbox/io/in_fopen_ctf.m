@@ -207,6 +207,13 @@ if ~isempty(pos_file)
     if ~isfield(HeadMat, 'TransfMegLabels') || ~iscell(HeadMat.TransfMegLabels) || isempty(HeadMat.TransfMegLabels)
         disp('BST> Warning: Unable to confirm coordinate system of head points. Assuming "Native" CTF head-coil-based system.');
     elseif ismember('Native=>Brainstorm/CTF', HeadMat.TransfMegLabels)
+        % If this transformation exists at this point, it means digitized coils were missing, and
+        % in_channel_pos fell back on digitized anatomical fiducials and already created this
+        % transform.  However, digitization without coils would be useless so this had to be a
+        % previous naming convention for head coils.  Yet since there are then no anatomical
+        % fiducials, this transform should be interpreted as going to Native (possibly identity),
+        % and here Native will be identical to SCS and the coil positions should be marked on the
+        % MRI.
         disp(['BST> Warning: missing digitized head coils in headshape file, automatic MEG-MRI coregistration is not possible.' 10 ...
               '              Assuming SCS coordinates as anatomical fiducials are present. If these fiducials actually represent head coils,' 10 ...
               '              please rename them in the headshape file to "HPI-N", "HPI-L" and "HPI-R", and re-import this MEG dataset.']);

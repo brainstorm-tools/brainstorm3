@@ -179,6 +179,57 @@ switch (FileFormat)
         end
         % Swap faces
         TessMat.Faces = TessMat.Faces(:,[2 1 3]);
+    case 'MI' 
+        % MiDeface, FS based tool, but doesn't save in same coordinates as FS, and we want to apply
+        % it to original MRI (not the FS modified one). Not auto-detected since it's a FS formatted
+        % file, must be specified.
+        % Read file with MNE function.
+        [TessMat.Vertices, TessMat.Faces] = mne_read_surface(TessFile);
+        if isempty(sMri)
+            error('sMri structure required to import head.surf file from MiDeface.');
+        end
+        Volumesize = size(sMri.Cube);
+        % Apply any re-orientation of the volume
+        iTransf = find(strcmpi(sMri.InitTransf(:,1), 'reorient'), 1);
+        if ~isempty(iTransf)
+            tReorient = sMri.InitTransf{iTransf,2};  % Voxel 0-based transformation, from original to Brainstorm
+        else
+            tReorient = eye(4);
+        end
+        VoxSizeOrig = [sMri.Voxsize, 1] * tReorient'; % still homogenous coords here.
+        % For units, for now we just assume the native surface file coordinates are in mm. This is
+        % also assumed in the MNE reading function above, which converts to meters.
+        % Unknown if it could depend on the units of the original file, but Bst doesn't have that on
+        % hand. It changes even the sMri.hdr to mm.
+
+        % Definition from Freesurfer documentation, of their vox2XYZ-tkregister coordinate system.
+        % vox2rastkr = [...
+        %     -Voxsize(1) 0 0 (Volumesize(1) * Voxsize(1))/2; ...
+        %     0 0 Voxsize(3) -(Volumesize(3) * Voxsize(3))/2; ...
+        %     0 -Voxsize(2) 0 (Volumesize(2) * Voxsize(2))/2; ...
+        %     0 0 0 1 ];
+        % BUT! Bst reorients sometimes so we had to "fix" sMri.Voxsize to the "original" assuming
+        % that's what FS would have used.  Untested with anisotropic voxels! 
+        vox2rastkr = diag(VoxSizeOrig) * ...
+            [[-1 0 0; 0 0 1; 0 -1 0], Volumesize([1,3,2])'/2 .* [1 -1 1]'; 0 0 0 1];
+
+        % Get "real vox" to Bst MRI coordinate transform. "real" vox is not available in cs_convert
+        % (only "Bst voxels" which are close to Bst MRI coords). 
+        % No longer relying on vox2ras.
+        % iTransf = find(strcmp(sMri.InitTransf(:,1), 'vox2ras'), 1);
+        % if isempty(iTransf)
+        %     error('vox2ras transform missing from MRI, needed to import head.surf file from MiDeface.');
+        % end
+        % vox2ras = sMri.InitTransf{iTransf, 2};
+        % After reorienting, we can shift by one voxel-size as per MRI coords definition (1-based).
+        % But it has to be in meters: vertices are in meters, and later cs_convert "MRI" is defined
+        % in meters.
+        % ("real" 0-based voxels) to (reoriented 0-based voxels) to (1-based voxels) to (MRI in meters)
+        vox2mri = diag([1e-3 * sMri.Voxsize, 1]) * [eye(3), [1 1 1]'; 0 0 0 1] * tReorient;
+        % This transform takes mm and outputs m.
+        headsurftrans = vox2mri  / vox2rastkr;
+        TessMat.Vertices = [TessMat.Vertices * 1e3, ones(size(TessMat.Vertices, 1), 1)] * headsurftrans(1:3,:)';
+        
     case 'OFF'
         TessMat = in_tess_off(TessFile);
         % Vertices: convert to meters
