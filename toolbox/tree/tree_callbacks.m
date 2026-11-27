@@ -3391,15 +3391,11 @@ function PetPvc_Callback(PetFile, sSubject)
     end
     % Run PVC
     bst_progress('start', 'PET PVC', 'Running partial volume correction...');
-    [~, errMsg, ~, regTable] = pet_pvc(PetFile, MriFileRef, fwhm, struct('method', method));
+    [~, errMsg] = pet_pvc(PetFile, MriFileRef, fwhm, struct('method', method));
     bst_progress('stop');
     if ~isempty(errMsg)
         bst_error(errMsg, 'PET PVC');
         return;
-    end
-    % GTM: regional values in the command window
-    if ~isempty(regTable)
-        disp(struct2table(regTable));
     end
 end
 

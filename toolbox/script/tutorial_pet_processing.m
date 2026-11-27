@@ -77,7 +77,7 @@ bst_process('CallProcess', 'process_import_anatomy', [], [], ...
     'subjectname', SubjectName, ...
     'mrifile',     {AnatDir, 'FreeSurfer+Thick'}, ...
     'nvertices',   15000);
-[sSubject, iSubject] = bst_get('Subject', SubjectName);
+sSubject = bst_get('Subject', SubjectName);
 MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 hFigMri = view_mri(MriFile);
 bst_report('Snapshot', hFigMri);
@@ -108,12 +108,17 @@ for iPet = 1 : length(PetFiles)
     % files have no BIDS sidecar, so the scanner cannot be read from the metadata: give it here.
     % With BIDS data, use [] to take the value found from the scanner model at import.
     PsfFwhm = 2.5;
-    [PetPvcFile, errPvc, ~, regTable] = pet_pvc(PetAggCoregFile, MriFile, PsfFwhm, struct('method', 'gtm'));
+    [PetPvcFile, errPvc, ~, RegPvcFile] = pet_pvc(PetAggCoregFile, MriFile, PsfFwhm, struct('method', 'gtm'));
     if ~isempty(errPvc)
         error(['Partial volume correction failed: ' errPvc]);
     end
     % Regional values before (observed) and after (corrected) GTM
-    disp(struct2table(regTable));
+    if ~isempty(RegPvcFile)
+        jFrameReg = view_matrix(RegPvcFile);
+        bst_report('Snapshot', jFrameReg);
+        pause(0.5);
+        jFrameReg.dispose();
+    end
     % Compute SUVR (reference: cerebellum; mask: cortex, as on the tutorial page), and project to surface
     [PetSuvrFile, ~, suvrSurfFile] = pet_process(PetPvcFile, 'ASEG', 'Cerebellum', 'Cortex', 1, 1);
 

@@ -218,7 +218,7 @@ switch lower(DisplayMode)
             end
         end
         % View table
-        view_table(ValueCell, headers, MatFile);
+        hFig = view_table(ValueCell, headers, MatFile);
         bst_progress('stop');
 
     otherwise

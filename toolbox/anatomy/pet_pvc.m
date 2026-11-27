@@ -1,9 +1,9 @@
-function [MriFilePvc, errMsg, fileTag, regTable] = pet_pvc(PetFile, MriFileRef, fwhm, pvcOpts)
+function [MriFilePvc, errMsg, fileTag, MtxFilePvc] = pet_pvc(PetFile, MriFileRef, fwhm, pvcOpts)
 % PET_PVC: Partial volume correction for PET volumes (GTM, or Muller-Gartner with PETPVE12).
 %
 % USAGE:
 %   [MriFilePvc, errMsg, fileTag] = pet_pvc(PetFile, MriFileRef, fwhm)
-%   [MriFilePvc, errMsg, fileTag, regTable] = pet_pvc(PetFile, MriFileRef, fwhm, pvcOpts)
+%   [MriFilePvc, errMsg, fileTag, MtxFilePvc] = pet_pvc(PetFile, MriFileRef, fwhm, pvcOpts)
 %
 % DESCRIPTION:
 %   Two methods, selected with pvcOpts.method:
@@ -40,7 +40,7 @@ function [MriFilePvc, errMsg, fileTag, regTable] = pet_pvc(PetFile, MriFileRef, 
 %   - errMsg     : Error message, if any
 %   - fileTag    : tag inserted in the output file name: '_pvc' (Muller-Gartner), '_gtmpvc' (GTM).
 %                  The output keeps the '_volpet' tag of the input (shown as a PET volume).
-%   - regTable   : GTM only: regional observed and corrected values (see ComputeGtm)
+%   - MtxFilePvc : GTM only: Relative path to matrix file with regional observed and corrected values (see ComputeGtm)
 %
 % REQUIRES (Muller-Gartner only):
 %   - SPM12 plugin (for tissue segmentation)
@@ -70,8 +70,8 @@ function [MriFilePvc, errMsg, fileTag, regTable] = pet_pvc(PetFile, MriFileRef, 
 MriFilePvc = [];
 errMsg = '';
 fileTag = '_pvc';
+MtxFilePvc = '';
 
-regTable = [];
 % ===== PARSE INPUTS =====
 if (nargin < 3)
     fwhm = [];
@@ -92,7 +92,7 @@ end
 % nor PETPVE12 (uses the subject's parcellation directly). It resolves the PSF itself.
 switch lower(pvcOpts.method)
     case 'gtm'
-        [MriFilePvc, errMsg, regTable] = ComputeGtm(PetFile, fwhm, pvcOpts);
+        [MriFilePvc, errMsg, MtxFilePvc] = ComputeGtm(PetFile, fwhm, pvcOpts);
         fileTag = '_gtmpvc';
         return;
     case 'mg'
@@ -301,7 +301,7 @@ end
 
 
 %% ===== GTM: GEOMETRIC TRANSFER MATRIX =====
-function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
+function [MriFileGtm, errMsg, MtxFilePvc] = ComputeGtm(PetFile, fwhm, gtmOpts)
 % Geometric Transfer Matrix (Rousset) regional partial volume correction.
 %
 % Native Brainstorm implementation of the Rousset 1998 GTM: corrects the regional
@@ -339,15 +339,21 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
 % OUTPUTS:
 %   MriFileGtm : relative path to the corrected (piecewise-constant) volume node.
 %   errMsg     : error message, if any.
-%   regTable   : struct with .id .name .nvox .observed .corrected (per region). Special ids:
-%                -1 extracerebral (or rest, without scalp), -2 air.
+%   MtxFilePvc : relative path to matrix with id name nvox observed corrected (per region). Special ids:
+%                -1 extracerebral (or rest, without scalp),
+%                -2 air.
 %
 % SEE ALSO: pet_pvc, pet_helper
 %
 % Reference: Rousset OG, Ma Y, Evans AC. Correction for partial volume effects in PET:
 %            principle and validation. J Nucl Med 1998;39:904-911.
 
-    MriFileGtm = ''; errMsg = ''; regTable = struct('id',{},'name',{},'nvox',{},'observed',{},'corrected',{});
+    MriFileGtm = '';
+    errMsg = '';
+    MtxFilePvc = '';
+    tableCols = {'id', 'name', 'nvox', 'observed', 'corrected'};
+    tableVals = cell(0, length(tableCols));
+
     if (nargin < 2), fwhm = []; end
     if (nargin < 3) || isempty(gtmOpts), gtmOpts = struct(); end
     if ~isfield(gtmOpts,'AtlasComment') || isempty(gtmOpts.AtlasComment), gtmOpts.AtlasComment = 'Desikan-Killiany'; end
@@ -357,7 +363,7 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
     if ~isProgress, bst_progress('start', 'PET GTM', 'Loading volumes...'); end
     try
         % ----- load PET + parcellation -----
-        sSubject = bst_get('MriFile', PetFile);
+        [sSubject, iSubject] = bst_get('MriFile', PetFile);
         if isempty(sSubject), error('Subject not found for PET file.'); end
         sMriPet = in_mri_bst(PetFile);
         pet = double(sMriPet.Cube(:,:,:,1));
@@ -459,14 +465,25 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
 
         % ----- region table -----
         for i = 1:R
-            regTable(i) = struct('id', regIds(i), 'name', local_regname(regIds(i), sAtl, headMask), ...
-                                 'nvox', n(i), 'observed', m(i), 'corrected', t(i)); %#ok<AGROW>
+            tableVals(end+1, :) = {num2str(regIds(i)), ...
+                                   local_regname(regIds(i), sAtl, headMask), ...
+                                   num2str(n(i)), ...
+                                   num2str(m(i)), ...
+                                   num2str(t(i))};
         end
+        sMat = db_template('matrixmat');
+        sMat.Value       = tableVals;
+        sMat.Description = tableCols;
 
-        % ----- save as anatomy node -----
+        % ----- prepare files to save -----
         sGtm.Comment = sprintf('%s | PVC GTM %.1fmm', sMriPet.Comment, fwhm(1));
         sGtm = bst_history('add', sGtm, 'gtm', sprintf('Rousset GTM PVC, FWHM=%.2fmm [%s], %d regions, cond=%.1e', ...
                            fwhm(1), fwhmSrc, R, 1/max(c,eps)));
+        sMat.Comment = sprintf('%s | PVC GTM %.1fmm %s', sMriPet.Comment, fwhm(1), gtmOpts.AtlasComment);
+        sMat = bst_history('add', sMat, 'gtm', sprintf('Atlas: %s', gtmOpts.AtlasComment));
+
+        % ----- save files -----
+        MtxFilePvc = SaveTableGtm(sMat,  PetFile, '_gtmpvc');
         MriFileGtm = SavePetVolume(sGtm, PetFile, '_gtmpvc');
     catch ME
         errMsg = ME.message;
@@ -507,6 +524,26 @@ function MriFileOut = SavePetVolume(sMriOut, PetFile, fileTag)
     panel_protocols('UpdateNode', 'Subject', iSubject);
     panel_protocols('SelectNode', [], 'volpet', iSubject, iAnatomy);
     db_save();
+end
+
+
+%% ===== SAVE TABLE GTM PET =====
+function MtxFilePvc = SaveTableGtm(FileMat, PetFile, fileTag)
+    % Get 'PET' Study
+    Condition = 'PET';
+    sSubject = bst_get('MriFile', PetFile);
+    [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, Condition));
+    if isempty(iStudy)
+        iStudy = db_add_condition(sSubject.Name, Condition);
+        sStudy = bst_get('Study', iStudy);
+    end
+    FileName = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), ['matrix' fileTag]);
+    % Save file
+    bst_save(FileName, FileMat, 'v6');
+    % Register in database
+    db_add_data(iStudy, FileName, FileMat);
+    MtxFilePvc = file_short(FileName);
+    panel_protocols('UpdateNode', 'Study', iStudy);
 end
 
 
