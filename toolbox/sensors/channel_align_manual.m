@@ -1033,6 +1033,9 @@ end
 %% ===== SHOW/HIDE LABELS =====
 function ToggleLabels(varargin)
     global gChanAlign;
+    if ~gChanAlign.isEeg
+        return
+    end
     % Update button color
     gui_update_toggle(gChanAlign.hButtonLabels);
     if strcmpi(get(gChanAlign.hButtonLabels, 'State'), 'on')

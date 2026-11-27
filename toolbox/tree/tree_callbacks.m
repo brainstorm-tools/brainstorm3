@@ -2538,9 +2538,12 @@ switch (lower(action))
                 [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                 % For only one file
                 if (length(bstNodes) == 1)
+                    sMat = in_bst_matrix(filenameFull, 'Time');
                     % Basic displays
-                    gui_component('MenuItem', jPopup, [], 'Display as time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_matrix(filenameFull, 'TimeSeries'));
-                    gui_component('MenuItem', jPopup, [], 'Display as image',       IconLoader.ICON_NOISECOV,   [], @(h,ev)view_matrix(filenameFull, 'Image'));
+                    if ~isempty(sMat.Time)
+                        gui_component('MenuItem', jPopup, [], 'Display as time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_matrix(filenameFull, 'TimeSeries'));
+                        gui_component('MenuItem', jPopup, [], 'Display as image',       IconLoader.ICON_NOISECOV,   [], @(h,ev)view_matrix(filenameFull, 'Image'));
+                    end
                     gui_component('MenuItem', jPopup, [], 'Display as table',       IconLoader.ICON_MATRIX,     [], @(h,ev)view_matrix(filenameFull, 'Table'));
                     % === STAT CLUSTERS ===
                     if strcmpi(nodeType, 'pmatrix') && ~isempty(strfind(filenameRelative, '_cluster'))
@@ -2548,7 +2551,7 @@ switch (lower(action))
                         jMenuCluster = gui_component('Menu', jPopup, [], 'Significant clusters', IconLoader.ICON_ATLAS, [], []);
                         gui_component('MenuItem', jMenuCluster, [], 'Cluster indices', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_statcluster(filenameRelative, 'clustindex_time', []));
                     end
-                    if strcmpi(nodeType, 'matrix')
+                    if strcmpi(nodeType, 'matrix') && ~isempty(sMat.Time)
                         AddSeparator(jPopup);
 		                gui_component('MenuItem', jPopup, [], 'Review as raw', IconLoader.ICON_RAW_DATA, [], @(h,ev)import_raw(filenameFull, 'BST-MATRIX', iSubject));
                     end

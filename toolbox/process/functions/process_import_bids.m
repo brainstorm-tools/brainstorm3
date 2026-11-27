@@ -913,8 +913,13 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     end
                 end
                 if ~isempty(EventsJsonFile)
-                    bst_process('CallProcess', 'process_evt_importhed', newFiles, [], ...
-                        'sidecar', {EventsJsonFile, 'JSON'});
+                    % Check if there are HED annotations in JSON file
+                    evtSidecar = bst_jsondecode(EventsJsonFile);
+                    if ~isempty(process_evt_importhed('IsHedJson', evtSidecar))
+                        bst_process('CallProcess', 'process_evt_importhed', newFiles, [], ...
+                            'sidecar', {EventsJsonFile, 'JSON'}, ...
+                            'evtfile', {EventsFile,     'BIDS'});
+                    end
                 end
 
                 % Load _channels.tsv

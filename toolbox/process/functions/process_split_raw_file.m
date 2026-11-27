@@ -214,13 +214,19 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, ...
         sOutMat.F = sFileOut;
         fileSamplesOut = round(sOutMat.F.prop.times .* sOutMat.F.prop.sfreq);
         % Remove events out of bounds
+        sEventsKeep = repmat(db_template('event'), 0);
         for iEvent = 1:length(sOutMat.F.events)
+            % No event occurrences
             if isempty(sOutMat.F.events(iEvent).times)
                 continue
             end
             % Compare with samples to avoid precision errors on times.
             iKeepEvents = find(and(round(sOutMat.F.events(iEvent).times(1,:) * sOutMat.F.prop.sfreq) >= fileSamplesOut(1), ...
                 round(sOutMat.F.events(iEvent).times(end,:) * sOutMat.F.prop.sfreq) <= fileSamplesOut(2)));
+            % No event occurrences within bounds
+            if isempty(iKeepEvents)
+                continue
+            end
             sOutMat.F.events(iEvent).epochs = sOutMat.F.events(iEvent).epochs(iKeepEvents);
             sOutMat.F.events(iEvent).times = sOutMat.F.events(iEvent).times(:,iKeepEvents);
             if ~isempty(sOutMat.F.events(iEvent).reactTimes)
@@ -232,7 +238,9 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, ...
             if ~isempty(sOutMat.F.events(iEvent).notes)
                 sOutMat.F.events(iEvent).notes = sOutMat.F.events(iEvent).notes(iKeepEvents);
             end
+            sEventsKeep(end+1) = sOutMat.F.events(iEvent);
         end
+        sOutMat.F.events = sEventsKeep;
 
         % Save new file
         bst_save(MatFile, sOutMat, 'v6');

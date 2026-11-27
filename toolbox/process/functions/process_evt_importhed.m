@@ -40,7 +40,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % JSON side car file
-    SelectOptions = {...
+    SelectOptions1 = {...
         '', ...                               % Filename
         '', ...                               % FileFormat
         'open', ...                           % Dialog type: {open,save}
@@ -52,7 +52,21 @@ function sProcess = GetDescription() %#ok<DEFNU>
         ''};
     sProcess.options.sidecar.Type    = 'filename';
     sProcess.options.sidecar.Comment = 'JSON sidecar';
-    sProcess.options.sidecar.Value   = SelectOptions;
+    sProcess.options.sidecar.Value   = SelectOptions1;
+    % TSV file
+    SelectOptions2 = {...
+        '', ...                               % Filename
+        '', ...                               % FileFormat
+        'open', ...                           % Dialog type: {open,save}
+        'Import HED JSON sidecar...', ...     % Window title
+        'ImportEvents', ...                   % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
+        'single', ...                         % Selection mode: {single,multiple}
+        'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
+        {{'_events.tsv'}, {'BIDS events (*_events.tsv)'}, 'BIDS'}, ...
+        ''};
+    sProcess.options.evtfile.Type    = 'filename';
+    sProcess.options.evtfile.Comment = 'TSV file (Optional)';
+    sProcess.options.evtfile.Value   = SelectOptions2;
 end
 
 
@@ -74,6 +88,7 @@ function OutputFile = Run(sProcess, sInput)
         bst_report('Error', sProcess, sInput, ['JSON file does not exist', 10, jsonFile]);
         return
     end
+    tsvFile = sProcess.options.evtfile.Value{1};
     % ===== GET EVENTS TO PROCESS =====
     isRaw = strcmpi(sInput.FileType, 'raw');
     if isRaw
@@ -89,17 +104,8 @@ function OutputFile = Run(sProcess, sInput)
     end
 
     % ===== ADD HED TAGS TO EVENTS =====
-    % Parse JSON file
-    fid = fopen(jsonFile, 'r');
-    if (fid < 0)
-        error(['Cannot open JSON file: ' jsonFile]);
-    end
-    % Read file
-    jsonStr = fread(fid, [1, Inf], '*char');
-    % Close file
-    fclose(fid);
-    % Decode JSON string
-    [hedEvtNames, hedEvtHedTags, errMsg] = json2events(jsonStr);
+    % Decode JSON file
+    [hedEvtNames, hedEvtHedTags, errMsg] = json2events(jsonFile, tsvFile);
     % Return if no HED tags or error
     if isempty(hedEvtNames) && isempty(hedEvtHedTags)
         if ~isempty(errMsg)
@@ -129,52 +135,56 @@ function OutputFile = Run(sProcess, sInput)
     bst_save(file_fullpath(sInput.FileName), DataMat, [], 1);
 end
 
-function [hedEvtNames, hedEvtHedTags, errMsg] = json2events(jsonStr, isOnlyHed)
-    if nargin < 2 || isempty(isOnlyHed)
-        isOnlyHed = 0;
+function [hedEvtNames, hedEvtHedTags, errMsg] = json2events(jsonStr, tsvFile)
+    if (nargin < 2)
+        tsvFile = '';
     end
     hedEvtNames = [];
     hedEvtHedTags = [];
     errMsg = '';
     %  Load JSON sidecar
     evtSidecar = bst_jsondecode(jsonStr);
-    % Find field with HED
-    evtSidecarFields = fieldnames(evtSidecar);
-    if ismember('trial_type', evtSidecarFields)
-        fieldEvtName = 'trial_type';
-    elseif ismember('event_type', evtSidecarFields)
-        fieldEvtName = 'event_type';
-    else
-        errMsg = 'HED: JSON file should annotate events in column "trial_type" or "event_type"';
+    % Find column with HED annotations
+    hedColumn = IsHedJson(evtSidecar);
+    if ~ismember(hedColumn, {'trial_type', 'event_type', 'value'})
+        errMsg = 'HED: Only categorical HED annotations for column "trial_type", "event_type" or "value" are supported';
         return
     end
-    sHed = evtSidecar.(fieldEvtName);
-    % Replace "Level" with "HED" if only HED
-    if isOnlyHed
+    sHed = evtSidecar.(hedColumn);
+    % Set "Level" with "HED" if missing
+    if ~isfield(sHed, 'Levels')
         sHed.Levels = sHed.HED;
     end
-    % Must contain 'Levels' and 'HED'
-    if ~all(ismember({'Levels', 'HED'}, fieldnames(sHed)))
-        errMsg ='HED: JSON file should have the fields "Levels" and "HED"' ;
-        return
-    end
-    % One HED for each Level
-    if ~all(ismember(fieldnames(sHed.Levels), fieldnames(sHed.HED)))
-        errMsg = 'HED: JSON file should have the same keynames for "Levels" and "HED"';
-        return
-    end
     evtKeys = fieldnames(sHed.Levels);
+    % Map from 'value' to 'event.label' (using the _events.tsv file)
+    valueMap = [];
+    if strcmp(hedColumn, 'value') && ~isempty(tsvFile) && file_exist(tsvFile)
+        [~, valueMap] = in_events_bids([], tsvFile);
+        % Values as valid Matlab names (as JSON keys)
+        validValues = cellfun(@matlab.lang.makeValidName, valueMap(:,1), 'UniformOutput', 0);
+    end
     % Get event names and HED tags
     hedEvtNames   = repmat({''}, length(evtKeys), 1);
     hedEvtHedTags = repmat({''}, length(evtKeys), 1);
     for iEvtKey = 1 : length(evtKeys)
         % Get name
-        hedEvtNames{iEvtKey} = evtKeys{iEvtKey};
-        % Replace with original name, in case Matlab changed to be a valid fieldname on reading the JSON file
-        levelStr = sHed.Levels.(evtKeys{iEvtKey});
-        tmp = regexp(levelStr, '^Brainstorm event "(.*)"', 'tokens');
-        if ~isempty(tmp) && length(tmp) == 1 && length(tmp{1}) == 1 && strcmp(evtKeys{iEvtKey}, matlab.lang.makeValidName(tmp{1}{1}))
-            hedEvtNames{iEvtKey} = tmp{1}{1};
+        if ~isempty(valueMap)
+            % 'event.label' from 'value'
+            evtNames = unique(valueMap(strcmp(validValues, evtKeys{iEvtKey}), 2));
+            if (length(evtNames) == 1)
+                hedEvtNames{iEvtKey} = evtNames{1};
+            end
+        else
+            hedEvtNames{iEvtKey} = evtKeys{iEvtKey};
+            % Replace with original name (Brainstorm-exported sidecars)
+            % in case Matlab changed to be a valid fieldname on reading the JSON file
+            if isfield(sHed.Levels, evtKeys{iEvtKey})
+                levelStr = sHed.Levels.(evtKeys{iEvtKey});
+                tmp = regexp(levelStr, '^Brainstorm event "(.*)"', 'tokens');
+                if ~isempty(tmp) && length(tmp) == 1 && length(tmp{1}) == 1 && strcmp(evtKeys{iEvtKey}, matlab.lang.makeValidName(tmp{1}{1}))
+                    hedEvtNames{iEvtKey} = tmp{1}{1};
+                end
+            end
         end
         % Get HED tags
         hedEvtHedTags{iEvtKey} = parsHedStr(sHed.HED.(evtKeys{iEvtKey}));
@@ -203,4 +213,19 @@ function hedTags = parsHedStr(hedStr)
     end
     % Remove empty spaces
     hedTags = strtrim(hedTags);
+end
+
+function hedColumn = IsHedJson(jsonStruct)
+    hedColumn = '';
+    if ~isstruct(jsonStruct)
+        return
+    end
+    colNames = fields(jsonStruct);
+    for iCol = 1 : length(colNames)
+        if isfield(jsonStruct, colNames{iCol}) && isstruct(jsonStruct.(colNames{iCol})) && ...
+                isfield(jsonStruct.(colNames{iCol}), 'HED') && isstruct(jsonStruct.(colNames{iCol}).HED)
+            hedColumn = colNames{iCol};
+            break
+        end
+    end
 end

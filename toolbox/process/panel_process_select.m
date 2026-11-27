@@ -767,6 +767,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         jListProcess.setModel(listModel);
         % Set selected indice
         jListProcess.setSelectedIndex(iSel);
+        drawnow;
         % Set callbacks
         java_setcb(jListProcess, 'ValueChangedCallback', @ListProcess_ValueChangedCallback);
         % Hide/show empty label indication
@@ -2389,7 +2390,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         if ismember(optType, {'value', 'range', 'freqrange', 'freqrange_static', 'checkbox', ...
                               'radio', 'radio_line', 'radio_label', 'radio_linelabel', 'combobox', 'combobox_label', ...
                               'text', 'textarea', 'channelname', 'subjectname', 'atlas', 'groupbands', 'montage', ...
-                              'freqsel', 'scout', 'scout_confirm', 'list_vertical', 'list_horizontal'}) ...
+                              'freqsel', 'cluster', 'cluster_confirm', 'scout', 'scout_confirm', 'list_vertical', 'list_horizontal'}) ...
                 || (strcmpi(optType, 'filename') && (length(value)>=7) && strcmpi(value{7},'dirs') && strcmpi(value{3},'save'))
             % Get processing options
             ProcessOptions = bst_get('ProcessOptions');

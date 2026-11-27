@@ -87,12 +87,12 @@ if isNewSubject
         bst_error(sprintf('Subject "%s" already exists in protocol.', sSubject.Name), 'Subject editor', 0);
         sSubject = [];
         return
-    % In Windows, warning for not unique (case-insensitive)
-    elseif ispc
+    % In Windows and macOS, warning for not unique (case-insensitive)
+    elseif ispc || ismac
         sProtocolSubjects = bst_get('ProtocolSubjects');
         subjectNames = [{sProtocolSubjects.DefaultSubject.Name}, {sProtocolSubjects.Subject.Name}];
         if ismember(lower(sSubject.Name), lower(subjectNames))
-            warning('Subject "%s" differs only in letter case from existing subject(s). Potential issue in Windows OS.', sSubject.Name);
+            warning('Subject "%s" differs only in letter case from existing subject(s). Potential issue in Windows and macOS.', sSubject.Name);
         end
     end
 end

@@ -205,14 +205,14 @@ for iFeature = 1 : nFeatures
     ms_w = ss_w / df_w;
     icc(iFeature) = (ms_b - ms_w) ./ (ms_b + ((nSegments-1).*ms_w));
 end
-iccFreqsScouts = reshape(icc, [nFreqs, nScouts]);
+iccScoutsFreqs = reshape(icc, [nScouts, nFreqs]);
 % Compute Scout ICC for frequency bands
 nBands = length(BandNames);
-iccBands = zeros(nScouts, nBands);
+iccScoutsBands = zeros(nScouts, nBands);
 for iBand = 1 : nBands
     ixLowerFreq = find(Freqs >= BandLowerFreqs(iBand), 1, 'first');
     ixUpperFreq = find(Freqs <  BandUpperFreqs(iBand), 1, 'last');
-    iccBands(: ,iBand) = mean(iccFreqsScouts(ixLowerFreq:ixUpperFreq, :), 1)';
+    iccScoutsBands(: ,iBand) = mean(iccScoutsFreqs(:, ixLowerFreq:ixUpperFreq), 2);
 end
 
 %% ===== SAVE OUTCOME IN BRAINSTORM DATABASE =====
@@ -254,7 +254,7 @@ db_add_data(iOutputStudy, DiffFile, sDiffMat);
 % Save band ICC values (scout level)
 for iBand = 1 : nBands
     sIccBandMat = db_template('matrixmat');
-    sIccBandMat.Value   = iccBands(:, iBand);
+    sIccBandMat.Value   = iccScoutsBands(:, iBand);
     sIccBandMat.Comment = ['ICC_' BandNames{iBand}];
     sIccBandMat.Time    = [0, 1];
     sIccBandMat.Description = ScoutNames;
@@ -290,7 +290,7 @@ for iBand = 1 : nBands
     % Assign ICC values to vertices in Scout
     for ix = 1 : nScouts
         iScout = find(ismember({sAtlas.Scouts.Label}, ScoutNames(ix)));
-        sIccBandMat.ImageGridAmp(sAtlas.Scouts(iScout).Vertices) = deal(iccBands(ix, iBand));
+        sIccBandMat.ImageGridAmp(sAtlas.Scouts(iScout).Vertices) = deal(iccScoutsBands(ix, iBand));
     end
     % Output filename
     IccBandFile = bst_process('GetNewFilename', bst_fileparts(sOutputStudy.FileName), 'results');

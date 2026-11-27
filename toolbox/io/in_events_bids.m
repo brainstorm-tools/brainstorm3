@@ -1,4 +1,4 @@
-function events = in_events_bids(sFile, EventFile)
+function [events, valueMap] = in_events_bids(sFile, EventFile)
 % IN_EVENTS_BIDS: Read a BIDS _events.tsv file (columns "onset", "duration", "trial_type").
 %
 % OUTPUT:
@@ -6,6 +6,7 @@ function events = in_events_bids(sFile, EventFile)
 %        |- label   : Identifier of event #i
 %        |- samples : Array of unique time indices for event #i in the corresponding raw file
 %        |- times   : Array of unique time latencies (in seconds) for event #i in the corresponding raw file
+%    - valueMap: [nRows, 2] cell array, {'value', 'event.label'}. Used to map HED annotations in 'value col'
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -26,15 +27,17 @@ function events = in_events_bids(sFile, EventFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2019-2022
+%          Raymundo Cassani, 2026
 
 % Read tsv file
 % https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
-% trial_type would be a subset of possible events that identify trial category.
-% value can be numbers or strings identifying the event.
+% 'trial_type' would be a subset of possible events that identify trial category.
+% 'value' can be numbers or strings identifying the event.
 % Only 'onset' and 'duration' are required.
 Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel', 'value', 'event_type'}, 0);
 if isempty(Markers) || isempty(Markers{1,1})
     events = [];
+    valueMap = [];
     return;
 end
 % Standardize empty/missing values to empty char.
@@ -44,22 +47,60 @@ if all(cellfun(@isempty, Markers(:,3))) && ~all(cellfun(@isempty, Markers(:,6)))
     Markers(:,3) = Markers(:,6);
 end
 Markers(:,6) = [];
-% If there is no trial_type and no value information: use the filename as the event name
-if all(cellfun(@isempty, Markers(:,3)) & cellfun(@isempty, Markers(:,5)))
-    [fPath, fbase, fExt] = bst_fileparts(EventFile);
-    Markers(:,3) = repmat({fbase}, size(Markers(:,3)));
-elseif all(cellfun(@isempty, Markers(:,3)))
-    Markers(:,3) = Markers(:,5);
-elseif ~all(cellfun(@isempty, Markers(:,5)))
-    % Both columns contain data
-    for iM = 1:size(Markers, 1)
-        if isempty(Markers{iM,3})
-            Markers{iM,3} = Markers{iM,5};
-        elseif ~isempty(Markers{iM,5})
-            % Merge
-            Markers{iM,3} = [Markers{iM,3} '-' Markers{iM,5}];
-        end
+% Find 'trial_type' with more than one 'value'
+isAddValueInName = zeros(size(Markers,1), 1);
+uniqueTypes = unique(Markers(:,3));
+for iType = 1:length(uniqueTypes)
+    if isempty(uniqueTypes{iType})
+        continue;
     end
+    iRows = strcmp(Markers(:,3), uniqueTypes{iType}) & ~cellfun(@isempty, Markers(:,5));
+    if (length(unique(Markers(iRows,5))) > 1)
+        isAddValueInName(iRows) = 1;
+    end
+end
+% Accumulator for additional Markers
+cpMarkers = cell(0, size(Markers,2));
+% Get event name, for each row in Markers
+[~, fBase] = bst_fileparts(EventFile);
+for iM = 1:size(Markers, 1)
+    isTrialType = ~isempty(Markers{iM,3});
+    isValue     = ~isempty(Markers{iM,5});
+    % Event has 'trial_type'
+    if isTrialType
+        % Keep 'trial_type' as event name
+        if isAddValueInName(iM)
+            % Make a copy of event, use 'trial_type'-'value' as event name
+            cpMarkers(end+1,:) = Markers(iM,:);
+            cpMarkers{end,3} = [cpMarkers{end,3} '-' cpMarkers{end,5}];
+        end
+    % Event has only 'value'
+    elseif isValue
+        % Set 'value' as event name
+        Markers{iM,3} = Markers{iM,5};
+    % No 'trial_type' nor 'value'
+    else
+        % Set 'filename' as event name
+        Markers{iM,3} = fBase;
+    end
+end
+% 'value' for each 'event name'
+eventNames = Markers(:,3);
+% Use the names with 'trial_type-value'
+eventNames(isAddValueInName == 1) = cpMarkers(:,3);
+% Map only eventNames associated with a 'value'
+iVal = ~cellfun(@isempty, Markers(:,5));
+valueMap = [Markers(iVal,5), eventNames(iVal)];
+% Keeo only unique pairs
+pairs = cellfun(@(v,n) [v, char(0), n], valueMap(:,1), valueMap(:,2), 'UniformOutput', 0);
+[~, iUnique] = unique(pairs);
+valueMap = valueMap(iUnique, :);
+
+% Add additional events if any
+if ~isempty(cpMarkers)
+    Markers = [Markers; cpMarkers];
+    [~, iSort] = sort(str2double(Markers(:,1)));
+    Markers = Markers(iSort,:);
 end
 % List of events from trial_type and/or value
 uniqueEvt = unique(Markers(:,3)');
@@ -69,7 +110,7 @@ events = repmat(db_template('event'), [1, length(uniqueEvt)]);
 % Create events list
 for iEvt = 1:length(uniqueEvt)
     % Find all the occurrences of event #iEvt
-    iMrk = find(strcmpi(Markers(:,3)', uniqueEvt{iEvt}));
+    iMrk = find(strcmp(Markers(:,3)', uniqueEvt{iEvt}));
     % Get event onsets and durations
     onsets = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,1), 'UniformOutput', 0);
     durations = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,2), 'UniformOutput', 0);
@@ -94,9 +135,6 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).label  = uniqueEvt{iEvt};
     events(iEvt).epochs = ones(1, length(iMrk));
     events(iEvt).times  = [onsets{:}];
-    % Convert latencies from the first sample in the file to the real timing 
-    % See specs: https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
-    events(iEvt).times = events(iEvt).times + sFile.prop.times(1);
     % Extended events if durations are defined for all the markers
     if all(~cellfun(@isempty, durations)) && all(~cellfun(@(c)isequal(c,0), durations))
         events(iEvt).times(2,:) = events(iEvt).times + [durations{:}];
@@ -104,13 +142,18 @@ for iEvt = 1:length(uniqueEvt)
     % Make the function independent of sFile
     if ~isempty(sFile)
         events(iEvt).times  = round(events(iEvt).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+        % Convert latencies from the first sample in the file to the real timing
+        % See specs: https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
+        events(iEvt).times = events(iEvt).times + sFile.prop.times(1);
     end
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
-    events(iEvt).channels   = channels;
-    events(iEvt).notes      = [];
+    if all(cellfun(@isempty, channels))
+        events(iEvt).channels  = [];
+    else
+        events(iEvt).channels  = channels;
+    end
 end
-
 
 
 
