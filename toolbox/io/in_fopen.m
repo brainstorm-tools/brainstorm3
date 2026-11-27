@@ -72,7 +72,7 @@ switch (FileFormat)
             sFile.condition = sprintf('%s_(%d)', fBase, length(sFile.header.fif_list));
         end
     case {'CTF', 'CTF-CONTINUOUS'}
-        [sFile, ChannelMat] = in_fopen_ctf(DataFile);
+        [sFile, ChannelMat] = in_fopen_ctf(DataFile, ImportOptions);
     case '4D'
         [sFile, ChannelMat] = in_fopen_4d(DataFile, ImportOptions);
     case 'KIT'
