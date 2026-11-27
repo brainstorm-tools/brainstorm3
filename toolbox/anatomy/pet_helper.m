@@ -424,3 +424,87 @@ function [fwhm, src, isKnown] = PsfFwhm(PET, fwhmScanner)
         end
     end
 end
+
+%% ===== DISPLAY METADATA =====
+function DisplayStoredMetadata(PetFile)
+    % Load only the PET metadata field (avoid loading the full 4D cube)
+    warning('off', 'MATLAB:load:variableNotFound');
+    w = load(file_fullpath(PetFile), 'Header');
+    warning('on', 'MATLAB:load:variableNotFound');
+    % No metadata available (e.g. imported before metadata capture was added)
+    if ~isfield(w.Header, 'Pet') || isempty(w.Header.Pet) || ~isfield(w.Header.Pet, 'Source') || strcmp(w.Header.Pet.Source, 'none')
+        java_dialog('msgbox', ['<HTML>No PET metadata is stored in this volume.<BR>' ...
+            'It may have been imported before PET metadata capture was added,<BR>' ...
+            'or no BIDS JSON / usable header was found at import.'], 'PET information');
+        return
+    end
+    java_dialog('msgbox', PetInfoHtml(w.Header.Pet), 'PET information');
+end
+
+function str = PetInfoHtml(PET)
+
+% Format a PET metadata struct as an HTML report for java_dialog('msgbox').
+    nl = '<BR>';
+    s = {'<HTML>'};
+    s{end+1} = ['<B>Source:</B> ' petStr(PET.Source) nl];
+    s{end+1} = ['<B>Tracer:</B> ' petStr(PET.Tracer.Name) ' (' petStr(PET.Tracer.Radionuclide) ...
+                '), units: ' petStr(PET.Tracer.Units) nl];
+    s{end+1} = ['<B>Injected:</B> ' petNum(PET.Injection.InjectedRadioactivity) ' ' ...
+                petStr(PET.Injection.InjectedRadioactivityUnits) ', mode: ' petStr(PET.Injection.Mode) nl];
+    s{end+1} = ['<B>TimeZero:</B> ' petStr(PET.Injection.TimeZero) ...
+                ',&nbsp; ScanStart: ' petNum(PET.Injection.ScanStart) ' s' ...
+                ',&nbsp; InjectionStart: ' petNum(PET.Injection.InjectionStart) ' s' nl];
+    if ~isempty(PET.Frames.CoverageMinPI)
+        s{end+1} = ['<B>Coverage:</B> ' petNum(PET.Frames.CoverageMinPI(1)) ' &ndash; ' ...
+                    petNum(PET.Frames.CoverageMinPI(2)) ' min post-injection' nl];
+    end
+    s{end+1} = ['<B>Decay corrected:</B> ' petBool(PET.Decay.ImageDecayCorrected) nl];
+    s{end+1} = ['<B>Scanner:</B> ' petStr(PET.Scanner.Manufacturer) ' ' petStr(PET.Scanner.Model) nl];
+    s{end+1} = ['<B>Recon:</B> ' petStr(PET.Scanner.ReconMethod) ', filter: ' ...
+                petStr(PET.Scanner.ReconFilterType) nl];
+    s{end+1} = ['<B>Frames:</B> ' num2str(PET.Frames.N) nl];
+    % Per-frame timing table
+    ts = PET.Frames.TimesStart;
+    du = PET.Frames.Duration;
+    mt = PET.Frames.MidTimes;
+    inj = PET.Injection.InjectionStart;
+    if ~isempty(ts)
+        s{end+1} = ['<TABLE BORDER=1 CELLPADDING=2><TR><TH>#</TH><TH>start (s)</TH>' ...
+                    '<TH>dur (s)</TH><TH>mid (s)</TH><TH>min p.i.</TH></TR>'];
+        for i = 1:numel(ts)
+            d = ''; m = ''; pmin = '';
+            if ~isempty(du) && (numel(du) >= i), d = petNum(du(i)); end
+            if ~isempty(mt) && (numel(mt) >= i), m = petNum(mt(i)); end
+            if ~isempty(mt) && (numel(mt) >= i) && ~isempty(inj), pmin = petNum((mt(i) - inj) / 60); end
+            s{end+1} = ['<TR><TD>' num2str(i) '</TD><TD>' petNum(ts(i)) '</TD><TD>' d ...
+                        '</TD><TD>' m '</TD><TD>' pmin '</TD></TR>'];
+        end
+        s{end+1} = '</TABLE>';
+    end
+    s{end+1} = '</HTML>';
+    str = [s{:}];
+
+    % Support functions
+    function s = petStr(v)
+        if isempty(v),       s = 'n/a';
+        elseif ischar(v),    s = v;
+        else,                s = num2str(v);
+        end
+    end
+
+    function s = petNum(v)
+        if isempty(v) || ~isnumeric(v), s = 'n/a';
+        else,                           s = num2str(v);
+        end
+    end
+
+    function s = petBool(v)
+        if isempty(v),                  s = 'n/a';
+        elseif islogical(v) || isnumeric(v)
+            if v, s = 'yes'; else, s = 'no'; end
+        elseif ischar(v),               s = v;
+        else,                           s = 'n/a';
+        end
+    end
+
+end
