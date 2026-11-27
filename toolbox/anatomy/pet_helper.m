@@ -3,8 +3,8 @@ function varargout = pet_helper(varargin)
 % 
 % USAGE: 
 %    - PET = pet_helper('ReadMetadata', PetFile, sMri) :
-%        Curated PET metadata (sMri.PET) from the BIDS JSON sidecar (*_pet.json),
-%        with a NIfTI header fallback
+%        Curated PET metadata (sMri.Header.Pet) from the BIDS JSON sidecar (*_pet.json),
+%        with a sMri.Header fallback
 %    - [fwhm, src] = pet_helper('ScannerFwhm', PET)
 %    - [fwhm, src] = pet_helper('ScannerFwhm', PET, defaultFwhm) :
 %        Scanner PSF FWHM (mm) from the scanner model and reconstruction filter
@@ -47,7 +47,7 @@ function PET = ReadMetadata(PetFile, sMri)
 % metadata into a single inspectable struct that every downstream PET step
 % (temporal windowing, SUVR, surface projection, PVC) reads from. The primary
 % source is the BIDS JSON sidecar next to PetFile (*_pet.json); if it is absent,
-% a partial struct is derived from the NIfTI header / loaded cube (sMri).
+% a partial struct is derived from the sMRI header and loaded cube.
 %
 % This is a pure read/parse function: no database side effects.
 %
@@ -57,7 +57,7 @@ function PET = ReadMetadata(PetFile, sMri)
 %   PetFile : path to the PET volume being imported (e.g. *_pet.nii.gz). Its BIDS
 %             JSON sidecar (*_pet.json) is looked up alongside it.
 %   sMri    : (optional) loaded Brainstorm MRI struct. sMri.Cube is used for the
-%             frame count and sMri.Header for the NIfTI-header fallback.
+%             frame count and sMri.Header for the header fallback.
 %
 % OUTPUT:
 %   PET : struct with fields .Source .Tracer .Injection .Frames .Decay .Scanner .Json
@@ -78,8 +78,33 @@ function PET = ReadMetadata(PetFile, sMri)
     if (nargin < 2)
         sMri = [];
     end
-
-    PET = local_empty_pet();
+    % --- initialize PET metadata ---
+    PET = struct();
+    PET.Source    = 'none';
+    PET.Tracer    = struct('Name',                      '', ...
+                           'Radionuclide',              '', ...
+                           'Units',                     '');
+    PET.Injection = struct('InjectedRadioactivity',     [], ...
+                           'InjectedRadioactivityUnits','', ...
+                           'Mode',                      '', ...
+                           'TimeZero',                  '', ...
+                           'InjectionStart',            [], ...
+                           'ScanStart',                 []);
+    PET.Frames    = struct('TimesStart',                [], ...
+                           'Duration',                  [], ...
+                           'N',                         0, ...
+                           'MidTimes',                  [], ...
+                           'CoverageMinPI',             []);
+    PET.Decay     = struct('ImageDecayCorrected',       [], ...
+                           'ImageDecayCorrectionTime',  []);
+    PET.Scanner   = struct('Manufacturer',              '', ...
+                           'Model',                     '', ...
+                           'ReconMethod',               '', ...
+                           'ReconFilterType',           '', ...
+                           'ReconFilterSize',           [], ...
+                           'AttenuationCorrection',     '');
+    PET.SmoothFwhm = [];   % Gaussian smoothing applied after import (see pet_helper('PsfFwhm'))
+    PET.Json       = [];
 
     % ---- primary source: BIDS JSON sidecar ----
     jsonFile = local_find_sidecar(PetFile);
@@ -95,28 +120,17 @@ function PET = ReadMetadata(PetFile, sMri)
         end
     end
 
-    % ---- fallback: NIfTI header / loaded cube ----
+    % ---- fallback: header / loaded cube ----
     if strcmp(PET.Source, 'none')
         PET = local_from_header(PET, sMri);
     end
 
     % ---- derived frame fields ----
     PET = local_derive_frames(PET);
-end
 
-
-%% ===== empty schema =====
-function PET = local_empty_pet()
-    PET = struct();
-    PET.Source    = 'none';
-    PET.Tracer    = struct('Name','', 'Radionuclide','', 'Units','');
-    PET.Injection = struct('InjectedRadioactivity',[], 'InjectedRadioactivityUnits','', ...
-                           'Mode','', 'TimeZero','', 'InjectionStart',[], 'ScanStart',[]);
-    PET.Frames    = struct('TimesStart',[], 'Duration',[], 'N',0, 'MidTimes',[], 'CoverageMinPI',[]);
-    PET.Decay     = struct('ImageDecayCorrected',[], 'ImageDecayCorrectionTime',[]);
-    PET.Scanner   = struct('Manufacturer','', 'Model','', 'ReconMethod','', ...
-                           'ReconFilterType','', 'ReconFilterSize',[], 'AttenuationCorrection','');
-    PET.Json      = [];
+    % ----- resolve the scanner resolution ---
+    % Falls back to 6 mm when the scanner is not identified.
+    [PET.PsfFwhm, PET.PsfSource, PET.PsfKnown] = ScannerFwhm(PET);
 end
 
 
@@ -169,7 +183,7 @@ function PET = local_from_json(PET, J)
 end
 
 
-%% ===== NIfTI-header / cube fallback =====
+%% ===== header / cube fallback =====
 function PET = local_from_header(PET, sMri)
     if isempty(sMri)
         return;   % Source stays 'none'
@@ -179,11 +193,13 @@ function PET = local_from_header(PET, sMri)
         PET.Frames.N = size(sMri.Cube, 4);
     end
     % Units, if the header carries them
-    if isfield(sMri, 'Header') && ~isempty(sMri.Header) && isfield(sMri.Header, 'nifti') ...
-            && isfield(sMri.Header.nifti, 'intent_name') && ~isempty(sMri.Header.nifti.intent_name)
-        PET.Tracer.Units = sMri.Header.nifti.intent_name;
+    if isfield(sMri, 'Header') && ~isempty(sMri.Header)
+        % NIfTI case
+        if isfield(sMri.Header, 'nifti') && isfield(sMri.Header.nifti, 'intent_name') && ~isempty(sMri.Header.nifti.intent_name)
+            PET.Tracer.Units = sMri.Header.nifti.intent_name;
+            PET.Source = 'nifti-header';
+        end
     end
-    PET.Source = 'nifti-header';
 end
 
 

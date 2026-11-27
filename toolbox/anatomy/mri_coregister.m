@@ -383,11 +383,10 @@ if isUpdateScs || isUpdateNcs
     end
 end
 
-
 % ===== PET METADATA =====
 % Methods that rebuild the volume from a NIfTI file drop the PET metadata: copy it back
-if isfield(sMriSrc, 'PET') && ~isempty(sMriReg)
-    sMriReg.PET = sMriSrc.PET;
+if isfield(sMriSrc.Header, 'Pet') && ~isempty(sMriReg)
+    sMriReg.Header.Pet = sMriSrc.Header.Pet;
 end
 
 % ===== SAVE NEW FILE =====

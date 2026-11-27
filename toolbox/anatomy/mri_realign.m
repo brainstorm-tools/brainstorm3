@@ -182,15 +182,14 @@ if ~isempty(Method)
     sMriAlign.Comment=Comment;
     sMriAlign = bst_history('add', sMriAlign, 'realign', sprintf(['Realigned %d frames in dynamic volume using ' Method ' '], nFrames));   % Add history entry
     % PET metadata (in_mri rebuilds the volume from the NIfTI and drops it)
-    if isfield(sMri, 'PET')
-        sMriAlign.PET = sMri.PET;
+    if isfield(sMri.Header, 'Pet')
+        sMriAlign.Header.Pet = sMri.Header.Pet;
     end
     if FWHM > 0
         sMriAlign = bst_history('add', sMriAlign, 'smooth', sprintf('Volume smoothed with %g mm kernel ', FWHM(1)));
         % Record the smoothing so that partial volume correction can add it to the PSF
-        if isfield(sMriAlign, 'PET') && isstruct(sMriAlign.PET)
-            if ~isfield(sMriAlign.PET, 'SmoothFwhm'), sMriAlign.PET.SmoothFwhm = []; end
-            sMriAlign.PET.SmoothFwhm(end+1) = FWHM(1);
+        if isfield(sMriAlign.Header, 'Pet') && isstruct(sMriAlign.Header.Pet)
+            sMriAlign.Header.Pet.SmoothFwhm(end+1) = FWHM(1);
         end
     end
 else

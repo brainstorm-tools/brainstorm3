@@ -101,13 +101,17 @@ switch lower(pvcOpts.method)
         errMsg = ['Unknown PVC method: ' pvcOpts.method];
         return;
 end
+
+% ===== LOAD INPUTS =====
+sMriPet = in_mri_bst(PetFile);
+sMriRef = in_mri_bst(MriFileRef);
+
 % Effective PSF: scanner resolution (given, or stored at import) + recorded smoothing
 PET = [];
-try
-    w = load(file_fullpath(PetFile), 'PET');
-    if isfield(w, 'PET'), PET = w.PET; end
-catch
+if isfield(sMriPet, 'Header') &&  isfield(sMriPet.Header, 'Pet')
+    PET = sMriPet.Header.Pet;
 end
+
 [fwhm, fwhmSrc, isKnown] = pet_helper('PsfFwhm', PET, fwhm);
 fprintf('BST> PET PVC: PSF FWHM = %.2f mm [%s]\n', fwhm, fwhmSrc);
 if ~isKnown
@@ -142,10 +146,6 @@ if ~isProgress
 end
 
 try
-    % ===== LOAD INPUTS =====
-    sMriPet = in_mri_bst(PetFile);
-    sMriRef = in_mri_bst(MriFileRef);
-
     % ===== CREATE TEMP DIRECTORY =====
     TmpDir = bst_get('BrainstormTmpDir', 0, 'petpvc');
 
@@ -269,9 +269,6 @@ try
     sMriPvc.SCS    = sMriPet.SCS;
     sMriPvc.NCS    = sMriPet.NCS;
     sMriPvc.Header = sMriPet.Header;
-    if isfield(sMriPet, 'PET')
-        sMriPvc.PET = sMriPet.PET;
-    end
 
     % ===== CLEAN UP TEMP DIRECTORY =====
     file_delete(TmpDir, 1, 1);
@@ -372,7 +369,9 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
             error('PSF FWHM must be a positive number (mm).');
         end
         PET = [];
-        if isfield(sMriPet, 'PET'), PET = sMriPet.PET; end
+        if isfield(sMriPet, 'Header') && isfield(sMriPet.Header, 'Pet')
+            PET = sMriPet.Header.Pet;
+        end
         [fwhm, fwhmSrc, isKnown] = pet_helper('PsfFwhm', PET, fwhm);
         fprintf('BST> PET GTM: PSF FWHM = %.2f mm [%s]\n', fwhm, fwhmSrc);
         if ~isKnown

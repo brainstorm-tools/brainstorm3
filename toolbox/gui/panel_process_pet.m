@@ -94,12 +94,9 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
     jComboMethod.setEnabled(false);
     % PSF FWHM: scanner resolution found at import from the PET metadata, shown with its source
     PET = [];
-    warning('off', 'MATLAB:load:variableNotFound');
-    w = load(file_fullpath(PetFile), 'PET');
-    warning('on', 'MATLAB:load:variableNotFound');
-    if isfield(w, 'PET') && isstruct(w.PET)
-        PET = w.PET;
-        PET.SmoothFwhm = [];   % Scanner only: the recorded smoothing is added by pet_pvc
+    w = load(file_fullpath(PetFile), 'Header');
+    if isfield(w, 'Header') && isfield(w.Header, 'Pet') && isstruct(w.Header.Pet)
+        PET = w.Header.Pet;
     end
     [scanFwhm, scanSrc, isFwhmKnown] = pet_helper('PsfFwhm', PET);
     jLabelFwhm = gui_component('label', jPanelPvc, 'br', 'Scanner PSF FWHM (mm):');

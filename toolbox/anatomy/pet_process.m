@@ -117,9 +117,8 @@ try
         sMri.Cube = local_gauss3(double(sMri.Cube(:,:,:,1)), pvcOpts.SmoothFWHM, sMri.Voxsize);
         sMri = bst_history('add', sMri, 'smooth', sprintf('Gaussian volume smoothing FWHM=%g mm', pvcOpts.SmoothFWHM(1)));
         % Record the smoothing so that a later PVC of this volume adds it to the PSF
-        if isfield(sMri, 'PET') && isstruct(sMri.PET)
-            if ~isfield(sMri.PET, 'SmoothFwhm'), sMri.PET.SmoothFwhm = []; end
-            sMri.PET.SmoothFwhm(end+1) = pvcOpts.SmoothFWHM(1);
+        if isfield(sMri.Header, 'Pet') && isstruct(sMri.Header.Pet)
+            sMri.Header.Pet.SmoothFwhm(end+1) = pvcOpts.SmoothFWHM(1);
         end
         smoothTag = sprintf('_smooth%g', pvcOpts.SmoothFWHM(1));
     end
