@@ -3307,12 +3307,16 @@ function fcnPetProcessing(jPopup, sSubject, iAnatomy)
     jMenu = gui_component('Menu', jPopup, [], 'PET processing', IconLoader.ICON_VOLPET);
     if length(iAnatomy) == 1
         PetFile = sSubject.Anatomy(iAnatomy).FileName;
+        % === PET METADATA ===
+        gui_component('MenuItem', jMenu, [], 'PET information', IconLoader.ICON_VOLPET, [], @(h,ev)pet_helper('DisplayStoredMetadata', PetFile));
+        AddSeparator(jMenu);
         % === PET IMPORT ===
         gui_component('MenuItem', jMenu, [], 'Realign frames', IconLoader.ICON_VOLPET, [], @(h,ev)PetImportProcess_Callback(PetFile));
         % === PET PROCESSING ===
         AddSeparator(jMenu);
         gui_component('MenuItem', jMenu, [], 'Compute SUVR', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@gui_show_dialog, 'PET processing options', @panel_process_pet, 1, [], PetFile));
-        gui_component('MenuItem', jMenu, [], 'Project volume to surface', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@mri_interp_vol2tess, PetFile, [], 'PET'));
+        gui_component('MenuItem', jMenu, [], 'Partial volume correction', IconLoader.ICON_VOLPET, [], @(h,ev)PetPvc_Callback(PetFile, sSubject));
+        gui_component('MenuItem', jMenu, [], 'Project volume to surface', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@mri_interp_vol2tess, PetFile, [], 'PET', [], [], 1));
     end
 end
 
@@ -3331,6 +3335,67 @@ function PetImportProcess_Callback(PetFile)
     if ~isempty(petopts)
         % Realign, smooth and aggregate
         mri_realign(PetFile, petopts.align, petopts.fwhm, petopts.aggregate);
+    end
+end
+
+
+%% ===== PET PVC CALLBACK =====
+function PetPvc_Callback(PetFile, sSubject)
+    % Get reference MRI
+    if isfield(sSubject, 'iAnatomy') && ~isempty(sSubject.iAnatomy)
+        MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    else
+        MriFileRef = sSubject.Anatomy(1).FileName;
+    end
+    % Ask for the method: GTM (default, no plugin) or Muller-Gartner (SPM12 + PETPVE12)
+    [res, isCancel] = java_dialog('question', ['<HTML><B>Partial volume correction method</B><BR><BR>' ...
+        '- <U><B>GTM</B></U>: regional geometric transfer matrix (Rousset) on the Desikan-Killiany<BR>' ...
+        '&nbsp;&nbsp;&nbsp;parcellation. No plugin needed. Regional values are listed in the command window.<BR>' ...
+        '- <U><B>Muller-Gartner</B></U>: voxelwise, gray matter only. Requires SPM12 and PETPVE12.<BR><BR></HTML>'], ...
+        'Partial volume correction', [], {'GTM', 'Muller-Gartner'}, 'GTM');
+    if isCancel || isempty(res)
+        return;
+    end
+    if strcmpi(res, 'GTM'), method = 'gtm'; else, method = 'mg'; end
+    % Default FWHM: scanner resolution stored at import (6 mm if unknown) + recorded smoothing
+    PET = [];
+    w = load(file_fullpath(PetFile), 'Header');
+    if isfield(w.Header, 'Pet'), PET = w.Header.Pet; end
+    [~, fwhmSrc] = pet_helper('PsfFwhm', PET);
+    % Remove recorded smoothing metadata to display the scanner resolution alone
+    PET.SmoothFwhm = [];
+    [scanFwhm, scanSrc, isKnown] = pet_helper('PsfFwhm', PET);
+    if isKnown
+        strScanner = ['Scanner: <B>' scanSrc '</B><BR>'];
+    else
+        strScanner = ['<FONT color="#C00000"><B>Scanner not identified from the PET metadata.</B><BR>' ...
+                      sprintf('%.1f mm is a generic default, not the resolution of your scanner.<BR>', scanFwhm) ...
+                      'A PSF larger than the true resolution over-corrects (negative regional values).<BR>' ...
+                      'Enter the PSF FWHM of your scanner and reconstruction.</FONT><BR><BR>'];
+    end
+    res = java_dialog('input', ...
+        ['<HTML>' strScanner ...
+         'Effective PSF used: <B>' fwhmSrc '</B><BR>' ...
+         'Smoothing recorded in the history is added in quadrature.<BR><BR>' ...
+         'Scanner PSF FWHM (mm):'], ...
+        'Partial volume correction', [], num2str(scanFwhm));
+    if isempty(res)
+        return;
+    end
+    fwhm = str2double(res);
+    if strcmpi(strtrim(res), 'auto') || (fwhm == scanFwhm)
+        fwhm = [];   % Value from the metadata: keep its source in the history
+    elseif isnan(fwhm) || (fwhm <= 0)
+        bst_error('FWHM must be a positive number.', 'PET PVC');
+        return;
+    end
+    % Run PVC
+    bst_progress('start', 'PET PVC', 'Running partial volume correction...');
+    [~, errMsg] = pet_pvc(PetFile, MriFileRef, fwhm, struct('method', method));
+    bst_progress('stop');
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'PET PVC');
+        return;
     end
 end
 

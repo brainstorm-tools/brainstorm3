@@ -1,9 +1,9 @@
-function [OutputFile, errorMsg] = mri_interp_vol2tess(MriFileSrc, MriFileRef, Condition, DisplayUnits, ProjFrac)
+function [OutputFile, errorMsg] = mri_interp_vol2tess(MriFileSrc, MriFileRef, Condition, DisplayUnits, ProjFrac, isPlot)
 % MRI_VOL2TESS: Estimates average voxel intensities along the surface
 % normals from pial surface to white matter surface and projects the result to
 % the pial surface as a texture.
 % 
-% USAGE:  OutputFile = mri_vol2tess(MriFileSrc, MriFileRef, Condition, DisplayUnits, ProjFrac)
+% USAGE:  [OutputFile, errorMsg] = mri_interp_vol2tess(MriFileSrc, MriFileRef, Condition, DisplayUnits, ProjFrac, isPlot)
 %
 % INPUT:
 %    - MriFileSrc : Source MRI file
@@ -13,6 +13,7 @@ function [OutputFile, errorMsg] = mri_interp_vol2tess(MriFileSrc, MriFileRef, Co
 %    - ProjFrac   : Weights for depth-weighted projection of data,
 %                   give as a 3-element vector for white matter, mid and 
 %                   pial surface, respectively (default: [0.1 0.8 0.1])
+%    - isPlot     : Logical, true to MRI projected on cortical surface
 %                 
 
 % @=============================================================================
@@ -38,9 +39,18 @@ function [OutputFile, errorMsg] = mri_interp_vol2tess(MriFileSrc, MriFileRef, Co
 %% ===== INITIALIZATION =====
 errorMsg = '';
 OutputFile = '';
-if nargin < 5, ProjFrac = [0.1 0.8 0.1]; end
-if nargin < 4, DisplayUnits = []; end
-if nargin < 3, Condition = []; end
+if nargin < 6 || isempty(isPlot)
+    isPlot = 0;
+end
+if nargin < 5 || isempty(ProjFrac)
+    ProjFrac = [0.1 0.8 0.1];
+end
+if nargin < 4
+    DisplayUnits = [];
+end
+if nargin < 3 || isempty(Condition)
+    Condition = 'vol2tess'
+end
 
 %% ===== LOAD ANATOMY AND CHECKS =====
 isProgressBar = bst_progress('isVisible');
@@ -180,12 +190,10 @@ panel_protocols('UpdateNode', 'Study', iStudy);
 % Save database
 db_save();
 
-% Progress bar
-if ~isProgressBar
-    bst_progress('stop');
-end
 %% ====== VISUALIZE RESULT ======= 
-view_surface_data(pialFile, OutputFile);
+if isPlot
+    view_surface_data(pialFile, OutputFile);
+end
 if ~isProgressBar
     bst_progress('stop');
 end
