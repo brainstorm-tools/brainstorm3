@@ -188,6 +188,12 @@ else
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
 end
 
+% PET: capture tracer / timing / scanner metadata into the data model
+if isPet && ~iscell(MriFile)
+    sMri.Header.Pet = pet_helper('ReadMetadata', MriFile, sMri);
+    sMri = bst_history('add', sMri, 'import', ['PET scanner resolution (PSF FWHM): ' sMri.Header.Pet.PsfSource]);
+end
+
 
 %% ===== DELETE TEMPORARY FILES =====
 if ~isempty(TmpDir)
