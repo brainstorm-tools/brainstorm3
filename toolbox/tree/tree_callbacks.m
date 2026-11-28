@@ -3316,7 +3316,7 @@ function fcnPetProcessing(jPopup, sSubject, iAnatomy)
         AddSeparator(jMenu);
         gui_component('MenuItem', jMenu, [], 'Compute SUVR', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@gui_show_dialog, 'PET processing options', @panel_process_pet, 1, [], PetFile));
         gui_component('MenuItem', jMenu, [], 'Partial volume correction', IconLoader.ICON_VOLPET, [], @(h,ev)PetPvc_Callback(PetFile, sSubject));
-        gui_component('MenuItem', jMenu, [], 'Project volume to surface', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@mri_interp_vol2tess, PetFile, [], 'PET'));
+        gui_component('MenuItem', jMenu, [], 'Project volume to surface', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@mri_interp_vol2tess, PetFile, [], 'PET', [], [], 1));
     end
 end
 

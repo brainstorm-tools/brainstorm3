@@ -80,8 +80,8 @@ bst_process('CallProcess', 'process_import_anatomy', [], [], ...
 sSubject = bst_get('Subject', SubjectName);
 MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 hFigMri = view_mri(MriFile);
-bst_report('Snapshot', hFigMri);
 pause(0.5);
+bst_report('Snapshot', hFigMri);
 close(hFigMri);
 
 
@@ -124,18 +124,18 @@ for iPet = 1 : length(PetFiles)
 
     % Figure: Aligned, aggregated, co-registered PET overlayed on MRI
     hFigPetOvr = view_mri(MriFile, PetAggCoregFile);
-    bst_report('Snapshot', hFigPetOvr);
     pause(0.5);
+    bst_report('Snapshot', hFigPetOvr);
     close(hFigPetOvr);
     % Figure: SUVR volume
     hFigPetSuvr = view_mri(MriFile, PetSuvrFile);
-    bst_report('Snapshot', hFigPetSuvr);
     pause(0.5);
+    bst_report('Snapshot', hFigPetSuvr);
     close(hFigPetSuvr);
     % Figure: SUVR projected to surface
     hFigSurfSuvr = view_surface_data([], suvrSurfFile);
-    bst_report('Snapshot', hFigSurfSuvr);
     pause(0.5);
+    bst_report('Snapshot', hFigSurfSuvr);
     close(hFigSurfSuvr);
 end
 

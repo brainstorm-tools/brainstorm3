@@ -1,4 +1,4 @@
-function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, roiName, maskROI, applyMask, doProject, pvcOpts)
+function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, roiName, maskROI, applyMask, doProject, pvcOpts, isPlot)
 % PET_PROCESS: Script PET processing pipeline (PVC, SUVR rescale, masking) with minimal redundant saving.
 %
 % INPUTS:
@@ -26,13 +26,15 @@ function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, 
 %
 %                  Smoothed SUVR without PVC: pvcOpts = struct('method','none', 'SmoothFWHM',6,
 %                  'SuvrOpts',struct('Reference','plain')).
+%   - isPlot    : Logical, true to display processed PET over reference MRI, and
+%                  PET projected on cortical surface if doProject is set
 %
 % OUTPUTS:
 %   - MriFileOut    : Output MRI file path (string)
 %   - errMsg        : Error message, if any
 %   - SurfaceFileOut: Output surface file path (string, if projected)
 %
-% USAGE:  [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, roiName, maskROI, applyMask, doProject, pvcOpts)
+% USAGE:  [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, roiName, maskROI, applyMask, doProject, pvcOpts, isPlot)
 %         [sMriSuvr, info] = pet_process('ComputeSuvr', sMriPet, sAseg, Opts) : SUVR with a robust reference region
 %
 % @=============================================================================
@@ -72,6 +74,10 @@ end
 if nargin < 7
     pvcOpts = [];
 end
+if nargin < 8 || isempty(isPlot)
+    isPlot = 0;
+end
+
 
 try
     % Get Subject for PET file
@@ -201,7 +207,10 @@ try
     else
         refMriFile = sSubject.Anatomy(1).FileName;
     end
-    view_mri(refMriFile, MriFileOut);
+    % --- Plot ---
+    if isPlot
+        view_mri(refMriFile, MriFileOut);
+    end
 
     % --- Project to surface if requested ---
     if doProject
@@ -210,7 +219,7 @@ try
         Condition = 'PET';
         DisplayUnits = '';
         ProjFrac = [0.1 0.4 0.5];
-        [SurfaceFileOut, errProj] = mri_interp_vol2tess(MriFileOut, refMriFile, Condition, DisplayUnits, ProjFrac);
+        [SurfaceFileOut, errProj] = mri_interp_vol2tess(MriFileOut, refMriFile, Condition, DisplayUnits, ProjFrac, isPlot);
         if ~isempty(errProj)
             errMsg = ['PET processed, but projection failed: ', errProj];
         end

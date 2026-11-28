@@ -291,7 +291,7 @@ function ButtonOK_Callback(panelName)
         end
 
         % Call pet_process pipeline with PVC and projection options
-        [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, atlas, roi, maskROI, isMaskChecked, doProject, pvcOpts);
+        [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, atlas, roi, maskROI, isMaskChecked, doProject, pvcOpts, 1);
 
         if ~isempty(errMsg)
             bst_error(errMsg, 'PET Processing');
